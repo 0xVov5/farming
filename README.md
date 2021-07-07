@@ -36,4 +36,4 @@ npm run package-npm
 ```
 
 ## Release
-Contract build artifacts are published to NPM: https://www.npmjs.com/package/singularitdao-farming-contracts
+Contract build artifacts are published to NPM: https://www.npmjs.com/package/singularitydao-farming-contracts
