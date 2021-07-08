@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import "./libraries/BoringMath.sol";
 import "./libraries/SignedSafeMath.sol";
+import "./libraries/BoringERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /************************************************************************************************

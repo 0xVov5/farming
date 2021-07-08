@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 import "./libraries/BoringMath.sol";
 import "./libraries/SignedSafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-
+import "./libraries/BoringERC20.sol";
 
 /************************************************************************************************
 Originally from
@@ -15,8 +15,6 @@ https://github.com/sdaoswap/sushiswap/blob/master/contracts/MasterChef.sol
 This source code has been modified from the original, which was copied from the github repository
 at commit hash 10148a31d9192bc803dac5d24fe0319b52ae99a4.
 *************************************************************************************************/
-
-
 
 
 contract SDAOBondedTokenStaking is Ownable {
