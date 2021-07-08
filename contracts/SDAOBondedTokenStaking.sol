@@ -19,7 +19,7 @@ at commit hash 10148a31d9192bc803dac5d24fe0319b52ae99a4.
 
 
 
-contract SDAOBondedTokenStaking is Ownable, BoringBatchable {
+contract SDAOBondedTokenStaking is Ownable {
   using BoringMath for uint256;
   using BoringMath128 for uint128;
   using BoringERC20 for IERC20;
