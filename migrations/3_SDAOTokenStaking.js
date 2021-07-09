@@ -19,6 +19,6 @@ module.exports = function(deployer, network, accounts) {
     // Update the following code for automatic addition of the SDAO Contract through the constructor
     //deployer.deploy(Token, {overwrite: false, gas: 4000000}).then((TokenInstance) => deployer.deploy(SDAOTokenStaking, TokenInstance.address));
 
-    deployer.deploy(SDAOTokenStaking);
+    deployer.deploy(SDAOTokenStaking,"0x5e94577b949a56279637ff74dfcff2c28408f049");
 
 };

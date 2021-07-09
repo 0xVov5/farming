@@ -216,9 +216,10 @@ contract SDAOTokenStaking is Ownable {
    */
   function updatePool(uint256 _pid) private returns (PoolInfo memory pool) {
     pool = poolInfo[_pid];
+
     if (block.number > pool.lastRewardBlock) {
-      //uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
-      uint256 lpSupply = pool.lpSupply;
+      uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
+      //uint256 lpSupply = pool.lpSupply;
 
       if (lpSupply > 0) {
           uint256 blocks = block.number.sub(pool.lastRewardBlock);
@@ -244,8 +245,8 @@ contract SDAOTokenStaking is Ownable {
     PoolInfo memory pool = poolInfo[_pid];
     UserInfo storage user = userInfo[_pid][_user];
     uint256 accRewardsPerShare = pool.accRewardsPerShare;
-    //uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
-    uint256 lpSupply = pool.lpSupply;
+    uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
+    //uint256 lpSupply = pool.lpSupply;
 
     if (block.number > pool.lastRewardBlock && lpSupply != 0) {
         uint256 blocks = block.number.sub(pool.lastRewardBlock);
@@ -272,14 +273,13 @@ contract SDAOTokenStaking is Ownable {
     UserInfo storage user = userInfo[_pid][_to];
 
     // check if epoch as ended
-    require (pool.endOfEpochBlock > block.number,"This pool epoch has ended. Please join staking new cession");
+   // require (pool.endOfEpochBlock > block.number,"This pool epoch has ended. Please join staking new cession");
     
     user.amount = user.amount.add(_amount);
     user.rewardDebt = user.rewardDebt.add(int256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
 
     // Interactions
     lpToken[_pid].safeTransferFrom(msg.sender, address(this), _amount);
-
     pool.lpSupply.add(_amount);
 
     emit Deposit(msg.sender, _pid, _amount, _to);
@@ -304,7 +304,6 @@ contract SDAOTokenStaking is Ownable {
 
     // Interactions
     lpToken[_pid].safeTransfer(_to, _amount);
-
     pool.lpSupply.sub(_amount);
 
     emit Withdraw(msg.sender, _pid, _amount, _to);
@@ -355,7 +354,6 @@ contract SDAOTokenStaking is Ownable {
     lpToken[_pid].safeTransfer(_to, _amount);
 
     pool.lpSupply.sub(_amount);
-
 
     emit Harvest(msg.sender, _pid, _pendingRewards);
     emit Withdraw(msg.sender, _pid, _amount, _to);

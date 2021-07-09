@@ -28,17 +28,17 @@ let truffleOptions = {
         },
         kovan: {
             gasPrice: 50000000000,
-            provider: () => provider("https://kovan.infura.io/v3/" + process.env.InfuraKey),
+            provider: () => provider("https://kovan.infura.io/v3/ea7f98d8d8ec45029085322fea33b752"),
             network_id: "42" // Kovan network ID
         },
         ropsten: {
              gasPrice: 50000000000,
-             provider: () => provider("https://ropsten.infura.io/v3/" + process.env.InfuraKey),
+             provider: () => provider("https://ropsten.infura.io/v3/ea7f98d8d8ec45029085322fea33b752"),
             network_id: "3", // ropsten network ID, 
         },
         main: {
             gasPrice: 70000000000,
-            provider: () => provider("https://mainnet.infura.io/v3/" + process.env.InfuraKey),
+            provider: () => provider("https://mainnet.infura.io/v3/ea7f98d8d8ec45029085322fea33b752"),
             network_id: "1" // mainnet network ID
        },
     },
