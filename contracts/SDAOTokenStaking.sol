@@ -167,6 +167,7 @@ contract SDAOTokenStaking is Ownable {
    */
   function add(uint256 _allocPoint, IERC20 _lpToken,uint256 _sdaoPerBlock,uint _endofepochblock) public onlyPointsAllocatorOrOwner {
     require(!stakingPoolExists[address(_lpToken)], " Staking pool already exists.");
+    
     uint256 pid = poolInfo.length;
     totalAllocPoint = totalAllocPoint.add(_allocPoint);
     lpToken[pid] = _lpToken;
@@ -176,9 +177,10 @@ contract SDAOTokenStaking is Ownable {
       tokenPerBlock: _sdaoPerBlock,
       endOfEpochBlock:_endofepochblock,
       lastRewardBlock: block.number.to64(),
-      lpSupply:0,
+      lpSupply:100,
       accRewardsPerShare: 0
     }));
+
     stakingPoolExists[address(_lpToken)] = true;
 
     emit LogPoolAddition(pid, _allocPoint, _lpToken);
@@ -216,12 +218,14 @@ contract SDAOTokenStaking is Ownable {
    */
   function updatePool(uint256 _pid) private returns (PoolInfo memory pool) {
     pool = poolInfo[_pid];
-
+    uint256 lpSupply = pool.lpSupply;
+    
     if (block.number > pool.lastRewardBlock) {
-      uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
-      //uint256 lpSupply = pool.lpSupply;
+    
+      //uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
+      
 
-      if (lpSupply > 0) {
+      if (lpSupply > 0 && block.timestamp < pool.endOfEpochBlock) {
           uint256 blocks = block.number.sub(pool.lastRewardBlock);
           uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
           pool.accRewardsPerShare = pool.accRewardsPerShare.add((sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply).to128());
@@ -245,8 +249,8 @@ contract SDAOTokenStaking is Ownable {
     PoolInfo memory pool = poolInfo[_pid];
     UserInfo storage user = userInfo[_pid][_user];
     uint256 accRewardsPerShare = pool.accRewardsPerShare;
-    uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
-    //uint256 lpSupply = pool.lpSupply;
+    //uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
+    uint256 lpSupply = pool.lpSupply;
 
     if (block.number > pool.lastRewardBlock && lpSupply != 0) {
         uint256 blocks = block.number.sub(pool.lastRewardBlock);
@@ -273,14 +277,14 @@ contract SDAOTokenStaking is Ownable {
     UserInfo storage user = userInfo[_pid][_to];
 
     // check if epoch as ended
-   // require (pool.endOfEpochBlock > block.number,"This pool epoch has ended. Please join staking new cession");
+    require (pool.endOfEpochBlock > block.timestamp,"This pool epoch has ended. Please join staking new cession");
     
     user.amount = user.amount.add(_amount);
     user.rewardDebt = user.rewardDebt.add(int256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
 
     // Interactions
     lpToken[_pid].safeTransferFrom(msg.sender, address(this), _amount);
-    pool.lpSupply.add(_amount);
+    pool.lpSupply = pool.lpSupply.add(_amount);
 
     emit Deposit(msg.sender, _pid, _amount, _to);
   }
@@ -304,7 +308,7 @@ contract SDAOTokenStaking is Ownable {
 
     // Interactions
     lpToken[_pid].safeTransfer(_to, _amount);
-    pool.lpSupply.sub(_amount);
+    pool.lpSupply = pool.lpSupply.sub(_amount);
 
     emit Withdraw(msg.sender, _pid, _amount, _to);
   }
@@ -353,7 +357,7 @@ contract SDAOTokenStaking is Ownable {
     rewardsToken.safeTransfer(_to, _pendingRewards);
     lpToken[_pid].safeTransfer(_to, _amount);
 
-    pool.lpSupply.sub(_amount);
+    pool.lpSupply = pool.lpSupply.sub(_amount);
 
     emit Harvest(msg.sender, _pid, _pendingRewards);
     emit Withdraw(msg.sender, _pid, _amount, _to);
@@ -375,7 +379,7 @@ contract SDAOTokenStaking is Ownable {
     lpToken[_pid].safeTransfer(_to, amount);
     
     PoolInfo memory pool = updatePool(_pid);
-    pool.lpSupply.sub(amount);
+    pool.lpSupply = pool.lpSupply.sub(amount);
 
     emit EmergencyWithdraw(msg.sender, _pid, amount, _to);
   }
