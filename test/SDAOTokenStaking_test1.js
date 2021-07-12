@@ -58,7 +58,7 @@ contract('SDAOTokenStaking', ([alice, bob, carol, dev, minter]) => {
 
 
 
-          it('check deposit after end of epoch', async () => {
+          it('check cant deposit after end of epoch', async () => {
           
             //=> block 0 = block 21
 
@@ -74,6 +74,34 @@ contract('SDAOTokenStaking', ([alice, bob, carol, dev, minter]) => {
             await expectRevert(this.sdaostaking.deposit("0", '100', alice, { from: alice }),"This pool epoch has ended. Please join staking new cession."); // should throw exception
             
 
+        });
+
+           it('check if reward gets updated after end of epoch', async () => {
+          
+            //=> block 0 = block 21
+
+
+            var currentDate = new Date();
+            var futureDate = new Date(currentDate.getTime() + 120*60000);
+            var futureDate2 = new Date(currentDate.getTime() + 240*60000);
+            var futureDate3 = new Date(currentDate.getTime() + 480*60000);
+
+
+            this.sdaostaking = await SDAOTokenStaking.new(this.sdao.address, { from: minter });
+            await this.sdao.approve(this.sdaostaking.address, "10000000000", { from: minter  });
+
+            await this.sdaostaking.addRewards("10000000000", { from: minter });
+           
+            await this.sdaostaking.add('10', this.lp.address, "1",Date.parse(futureDate2), { from: minter }); ////set unix time stamp to now  to check https://www.unixtimestamp.com/
+            await this.lp.approve(this.sdaostaking.address, '1000', { from: alice });
+            await this.sdaostaking.deposit("0", '100', alice, { from: alice });
+
+            await time.increaseTo(Date.parse(futureDate));
+            assert.equal((await this.sdaostaking.pendingRewards("0",alice)).valueOf().toString(), '1');
+            await time.increaseTo(Date.parse(futureDate2));
+            assert.equal((await this.sdaostaking.pendingRewards("0",alice)).valueOf().toString(), '2');
+              await time.increaseTo(Date.parse(futureDate3));
+            assert.equal((await this.sdaostaking.pendingRewards("0",alice)).valueOf().toString(), '3');
 
         });
 
