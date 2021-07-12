@@ -37,7 +37,7 @@ contract('SDAOTokenStaking', ([alice, bob, carol, dev, minter]) => {
 
             await this.sdaostaking.addRewards("10000000000", { from: minter });
             
-            await this.sdaostaking.add('10', this.lp.address, "1","1628574913", { from: minter });
+            await this.sdaostaking.add('10', this.lp.address, "1","1628787641", { from: minter });////set unix time stamp to next month to check https://www.unixtimestamp.com/
             await this.lp.approve(this.sdaostaking.address, '1000', { from: alice });
 
             await this.sdaostaking.deposit("0", '100', alice, { from: alice });
@@ -58,24 +58,24 @@ contract('SDAOTokenStaking', ([alice, bob, carol, dev, minter]) => {
 
 
 
-        //   it('check deposit after end of epoch', async () => {
+          it('check deposit after end of epoch', async () => {
           
-        //     //=> block 0 = block 21
+            //=> block 0 = block 21
 
-        //     this.sdaostaking = await SDAOTokenStaking.new(this.sdao.address, { from: minter });
-        //     await this.sdao.approve(this.sdaostaking.address, "10000000000", { from: minter  });
+            this.sdaostaking = await SDAOTokenStaking.new(this.sdao.address, { from: minter });
+            await this.sdao.approve(this.sdaostaking.address, "10000000000", { from: minter  });
 
-        //     await this.sdaostaking.addRewards("10000000000", { from: minter });
+            await this.sdaostaking.addRewards("10000000000", { from: minter });
+           
+            await this.sdaostaking.add('10', this.lp.address, "1","1626116446", { from: minter }); ////set unix time stamp to now  to check https://www.unixtimestamp.com/
+            await this.lp.approve(this.sdaostaking.address, '1000', { from: alice });
             
-        //     await this.sdaostaking.add('10', this.lp.address, "1","1626069313", { from: minter });
-        //     await this.lp.approve(this.sdaostaking.address, '1000', { from: alice });
-            
-        //     await time.advanceBlockTo('19218');
-        //     await this.sdaostaking.deposit("0", '100', alice, { from: alice });
+            await time.advanceBlockTo('334');
+            await expectRevert(this.sdaostaking.deposit("0", '100', alice, { from: alice }),"This pool epoch has ended. Please join staking new cession."); // should throw exception
             
 
 
-        // });
+        });
 
     });
 });
