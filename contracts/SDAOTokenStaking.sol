@@ -75,7 +75,7 @@ contract SDAOTokenStaking is Ownable {
   /**
    * @dev Indicates whether a staking pool exists for a given staking token.
    */
-  mapping(address => bool) public stakingPoolExists;
+  mapping(address => uint256) public stakingPoolExists;
 
   /**
    * @dev Info of each staking pool.
@@ -165,8 +165,8 @@ contract SDAOTokenStaking is Ownable {
    * @param _allocPoint AP of the new pool.
    * @param _lpToken Address of the LP ERC-20 token.
    */
-  function add(uint256 _allocPoint, IERC20 _lpToken,uint256 _sdaoPerBlock,uint _endofepochblock) public onlyPointsAllocatorOrOwner {
-    require(!stakingPoolExists[address(_lpToken)], " Staking pool already exists.");
+  function add(uint256 _allocPoint, IERC20 _lpToken,uint256 _sdaoPerBlock,uint64 _endofepochblock) public onlyPointsAllocatorOrOwner {
+  //  require(!stakingPoolExists[address(_lpToken)], " Staking pool already exists.");
     
     uint256 pid = poolInfo.length;
     totalAllocPoint = totalAllocPoint.add(_allocPoint);
@@ -181,7 +181,7 @@ contract SDAOTokenStaking is Ownable {
       accRewardsPerShare: 0
     }));
 
-    stakingPoolExists[address(_lpToken)] = true;
+    stakingPoolExists[address(_lpToken)] = pid;
 
     emit LogPoolAddition(pid, _allocPoint, _lpToken);
   }
@@ -216,26 +216,64 @@ contract SDAOTokenStaking is Ownable {
    * @param _pid The index of the pool. See `poolInfo`.
    * @return pool Returns the pool that was updated.
    */
+  // function updatePool(uint256 _pid) private returns (PoolInfo memory pool) {
+  //   pool = poolInfo[_pid];
+  //   uint256 lpSupply = pool.lpSupply;
+    
+  //   if (block.number > pool.lastRewardBlock) {
+    
+  //     //uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
+
+  //     if (lpSupply > 0 && block.number < pool.endOfEpochBlock) {
+
+  //         uint256 blocks = block.number.sub(pool.lastRewardBlock);
+  //         uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
+  //         pool.accRewardsPerShare = pool.accRewardsPerShare.add((sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply).to128());
+  //     }
+  //     // else{
+
+  //     //  uint256 blocks =  pool.endOfEpochBlock.sub(pool.lastRewardBlock);
+
+  //     // }
+
+  //     pool.lastRewardBlock = block.number.to64();
+  //     poolInfo[_pid] = pool;
+  //     emit LogUpdatePool(_pid, pool.lastRewardBlock, lpSupply, pool.accRewardsPerShare);
+  //   }
+  // }
+
+
   function updatePool(uint256 _pid) private returns (PoolInfo memory pool) {
     pool = poolInfo[_pid];
     uint256 lpSupply = pool.lpSupply;
-    
+
     if (block.number > pool.lastRewardBlock) {
-    
-      //uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
-      
 
-      if (lpSupply > 0 && block.timestamp < pool.endOfEpochBlock) {
-          uint256 blocks = block.number.sub(pool.lastRewardBlock);
-          uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
-          pool.accRewardsPerShare = pool.accRewardsPerShare.add((sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply).to128());
-      }
+       if(lpSupply > 0){
+         
+           if(block.number < pool.endOfEpochBlock) {
+             
+             uint256 blocks = block.number.sub(pool.lastRewardBlock);
+             uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
+             pool.accRewardsPerShare = pool.accRewardsPerShare.add((sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply).to128());
 
-      pool.lastRewardBlock = block.number.to64();
-      poolInfo[_pid] = pool;
-      emit LogUpdatePool(_pid, pool.lastRewardBlock, lpSupply, pool.accRewardsPerShare);
+           } else {
+           
+             uint256 blocks = pool.endOfEpochBlock.sub(pool.lastRewardBlock);
+             uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
+             pool.accRewardsPerShare = pool.accRewardsPerShare.add((sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply).to128());
+
+          }
+
+       }
+
+       pool.lastRewardBlock = block.number.to64();
+       poolInfo[_pid] = pool;
+       emit LogUpdatePool(_pid, pool.lastRewardBlock, lpSupply, pool.accRewardsPerShare);
+
     }
   }
+
 
 /** ==========  Users  ========== */
 
@@ -252,11 +290,23 @@ contract SDAOTokenStaking is Ownable {
     //uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
     uint256 lpSupply = pool.lpSupply;
 
-    if (block.number > pool.lastRewardBlock && lpSupply != 0) {
-        uint256 blocks = block.number.sub(pool.lastRewardBlock);
+     if(lpSupply > 0){
+
+      if(block.number < pool.endOfEpochBlock) {
+
+          uint256 blocks = block.number.sub(pool.lastRewardBlock);
+          uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
+          accRewardsPerShare = accRewardsPerShare.add(sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply);
+      
+      } else {
+
+        uint256 blocks = pool.endOfEpochBlock.sub(pool.lastRewardBlock);
         uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
         accRewardsPerShare = accRewardsPerShare.add(sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply);
+      }
+
     }
+
     pending = int256(user.amount.mul(accRewardsPerShare) / ACC_REWARDS_PRECISION).sub(user.rewardDebt).toUInt256();
   }
 
@@ -277,7 +327,7 @@ contract SDAOTokenStaking is Ownable {
     UserInfo storage user = userInfo[_pid][_to];
 
     // check if epoch as ended
-    require (pool.endOfEpochBlock > block.timestamp,"This pool epoch has ended. Please join staking new cession");
+    require (pool.endOfEpochBlock > block.number,"This pool epoch has ended. Please join staking new cession");
     
     user.amount = user.amount.add(_amount);
     user.rewardDebt = user.rewardDebt.add(int256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
@@ -320,8 +370,9 @@ contract SDAOTokenStaking is Ownable {
    */
   function harvest(uint256 _pid, address _to) public {
     require(_to != address(0), "ERC20: transfer to the zero address");
-
+    
     PoolInfo memory pool = updatePool(_pid);
+    
     UserInfo storage user = userInfo[_pid][msg.sender];
     int256 accumulatedRewards = int256(user.amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION);
     uint256 _pendingRewards = accumulatedRewards.sub(user.rewardDebt).toUInt256();
