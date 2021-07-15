@@ -45,59 +45,50 @@ contract('SDAOTokenStaking', ([alice, bob, carol, dev, minter]) => {
             assert.equal((await this.sdaostaking.pendingRewards("0",alice)).valueOf().toString(), '321');
             await time.advanceBlockTo("500");
             assert.equal((await this.sdaostaking.pendingRewards("0",alice)).valueOf().toString(), '321');
-        
+            
+           
 
         });
 
 
-        // it('should distribute SDAOs properly for a staker', async () => {
+        it('should distribute SDAOs properly for a staker', async () => {
+
+                this.sdaostaking = await SDAOTokenStaking.new(this.sdao.address, { from: minter });
+            await this.sdao.approve(this.sdaostaking.address, "10000000000", { from: minter  });
+
+            await this.sdaostaking.addRewards("10000000000", { from: minter });
+        
+            await this.sdaostaking.add('10', this.lp.address, "1","1000", { from: minter }); ////set unix time stamp to now  to check https://www.unixtimestamp.com/
+            await this.lp.approve(this.sdaostaking.address, '1000', { from: alice });
+            await this.sdaostaking.deposit("0", '100', alice, { from: alice });
+
+            await time.advanceBlockTo("852");
+            assert.equal((await this.sdaostaking.pendingRewards("0",alice)).valueOf().toString(), '337');
+             await this.sdaostaking.harvest("0", alice, { from: alice });
+            assert.equal((await this.sdao.balanceOf(alice)).valueOf().toString(), '338');
+        
+        });
+
+
+
+          it('check cant deposit after end of epoch', async () => {
           
-        //     //=> block 0 = block 21
-
-        //    // this.sdaostaking2 = await SDAOTokenStaking.new(this.sdao.address, { from: minter });
-        //    // await this.sdao.approve(this.sdaostaking2.address, "10000000000", { from: minter  });
-
-        //    // await this.sdaostaking.addRewards("10000000000", { from: minter });
+            //=> block 0 = block 21
             
-        //     await this.sdaostaking.add('10', this.lp.address, "1","2000", { from: minter });////set unix time stamp to next month to check https://www.unixtimestamp.com/
-        //     await this.lp.approve(this.sdaostaking.address, '1000', { from: bob });
+            this.sdaostaking = await SDAOTokenStaking.new(this.sdao.address, { from: minter });
+            await this.sdao.approve(this.sdaostaking.address, "10000000000", { from: minter  });
 
-        //     await this.sdaostaking.deposit("1", '100', bob, { from: bob });
-
-        //     assert.equal((await this.lp.balanceOf(bob)).valueOf().toString(), '900');
-        //     assert.equal((await this.lp.balanceOf(this.sdaostaking.address)).valueOf().toString(), '100');
-
-        //     await time.advanceBlockTo('1015');
-        //     // assert.equal((await this.lp.balanceOf(alice)).valueOf().toString(), '10');
-        //     assert.equal((await this.sdaostaking.pendingRewards("1",bob)).valueOf().toString(), '503');
-        //     // assert.equal((await this.sdaostaking.pendingRewards("0",bob)).valueOf().toString(), '99');
-        //     // assert.equal((await this.sdaostaking.pendingRewards("0",carol)).valueOf().toString(), '99');
-        //     await this.sdaostaking.harvest("1", bob, { from: bob });
-        //     // assert.equal((await this.sdao.totalSupply()).valueOf(), '22000');
-        //      assert.equal((await this.sdao.balanceOf(bob)).valueOf().toString(), '504');
-
-        // });
-
-
-
-        //   it('check cant deposit after end of epoch', async () => {
-          
-        //     //=> block 0 = block 21
-
-        //     this.sdaostaking = await SDAOTokenStaking.new(this.sdao.address, { from: minter });
-        //     await this.sdao.approve(this.sdaostaking.address, "10000000000", { from: minter  });
-
-        //     await this.sdaostaking.addRewards("10000000000", { from: minter });
-           
-        //     await this.sdaostaking.add('10', this.lp.address, "1","334", { from: minter }); ////set unix time stamp to now  to check https://www.unixtimestamp.com/
-        //     await this.lp.approve(this.sdaostaking.address, '1000', { from: alice });
-            
-        //     await time.advanceBlockTo('334');
-        //     await this.lp.approve(this.sdaostaking.address, '1000', { from: bob });
-        //     await expectRevert(this.sdaostaking.deposit("0", '1000', bob, { from: bob }),"This pool epoch has ended. Please join staking new cession."); // should throw exception
+            await this.sdaostaking.addRewards("10000000000", { from: minter });
+  
+            await this.sdaostaking.add('10', this.lp.address, "1","500", { from: minter }); ////set unix time stamp to now  to check https://www.unixtimestamp.com/
+            await this.lp.approve(this.sdaostaking.address, '1000', { from: alice });
             
 
-        // });
+            await this.lp.approve(this.sdaostaking.address, '1000', { from: bob });
+            await expectRevert(this.sdaostaking.deposit("0", '1000', bob, { from: bob }),"This pool epoch has ended. Please join staking new cession."); // should throw exception
+            
+
+        });
 
         
 

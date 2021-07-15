@@ -75,7 +75,7 @@ contract SDAOTokenStaking is Ownable {
   /**
    * @dev Indicates whether a staking pool exists for a given staking token.
    */
-  mapping(address => uint256) public stakingPoolExists;
+  mapping(address => bool) public stakingPoolExists;
 
   /**
    * @dev Info of each staking pool.
@@ -166,7 +166,7 @@ contract SDAOTokenStaking is Ownable {
    * @param _lpToken Address of the LP ERC-20 token.
    */
   function add(uint256 _allocPoint, IERC20 _lpToken,uint256 _sdaoPerBlock,uint64 _endofepochblock) public onlyPointsAllocatorOrOwner {
-  //  require(!stakingPoolExists[address(_lpToken)], " Staking pool already exists.");
+    require(!stakingPoolExists[address(_lpToken)], " Staking pool already exists.");
     
     uint256 pid = poolInfo.length;
     totalAllocPoint = totalAllocPoint.add(_allocPoint);
@@ -181,7 +181,7 @@ contract SDAOTokenStaking is Ownable {
       accRewardsPerShare: 0
     }));
 
-    stakingPoolExists[address(_lpToken)] = pid;
+    stakingPoolExists[address(_lpToken)] = true;
 
     emit LogPoolAddition(pid, _allocPoint, _lpToken);
   }
@@ -218,23 +218,15 @@ contract SDAOTokenStaking is Ownable {
    */
   // function updatePool(uint256 _pid) private returns (PoolInfo memory pool) {
   //   pool = poolInfo[_pid];
-  //   uint256 lpSupply = pool.lpSupply;
-    
   //   if (block.number > pool.lastRewardBlock) {
-    
   //     //uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
+  //     uint256 lpSupply = pool.lpSupply;
 
-  //     if (lpSupply > 0 && block.number < pool.endOfEpochBlock) {
-
+  //     if (lpSupply > 0) {
   //         uint256 blocks = block.number.sub(pool.lastRewardBlock);
   //         uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
   //         pool.accRewardsPerShare = pool.accRewardsPerShare.add((sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply).to128());
   //     }
-  //     // else{
-
-  //     //  uint256 blocks =  pool.endOfEpochBlock.sub(pool.lastRewardBlock);
-
-  //     // }
 
   //     pool.lastRewardBlock = block.number.to64();
   //     poolInfo[_pid] = pool;
@@ -243,7 +235,7 @@ contract SDAOTokenStaking is Ownable {
   // }
 
 
-  function updatePool(uint256 _pid) private returns (PoolInfo memory pool) {
+ function updatePool(uint256 _pid) private returns (PoolInfo memory pool) {
     pool = poolInfo[_pid];
     uint256 lpSupply = pool.lpSupply;
 
@@ -270,6 +262,7 @@ contract SDAOTokenStaking is Ownable {
     }
 
   }
+
 
 
 /** ==========  Users  ========== */
@@ -362,11 +355,10 @@ contract SDAOTokenStaking is Ownable {
    * @param _pid The index of the pool. See `poolInfo`.
    * @param _to Receiver of rewards.
    */
-  function harvest(uint256 _pid, address _to) public {
+   function harvest(uint256 _pid, address _to) public {
     require(_to != address(0), "ERC20: transfer to the zero address");
-    
+
     PoolInfo memory pool = updatePool(_pid);
-    
     UserInfo storage user = userInfo[_pid][msg.sender];
     int256 accumulatedRewards = int256(user.amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION);
     uint256 _pendingRewards = accumulatedRewards.sub(user.rewardDebt).toUInt256();
