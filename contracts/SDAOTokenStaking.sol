@@ -247,23 +247,19 @@ contract SDAOTokenStaking is Ownable {
     pool = poolInfo[_pid];
     uint256 lpSupply = pool.lpSupply;
 
-    if (block.number > pool.lastRewardBlock) {
+    if (block.number > pool.lastRewardBlock && pool.lastRewardBlock < pool.endOfEpochBlock) {
 
        if(lpSupply > 0){
          
+           uint256 blocks;
            if(block.number < pool.endOfEpochBlock) {
-             
-             uint256 blocks = block.number.sub(pool.lastRewardBlock);
-             uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
-             pool.accRewardsPerShare = pool.accRewardsPerShare.add((sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply).to128());
-
+             blocks = block.number.sub(pool.lastRewardBlock);
            } else {
-           
-             uint256 blocks = pool.endOfEpochBlock.sub(pool.lastRewardBlock);
-             uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
-             pool.accRewardsPerShare = pool.accRewardsPerShare.add((sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply).to128());
-
+             blocks = pool.endOfEpochBlock.sub(pool.lastRewardBlock);
           }
+
+          uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
+          pool.accRewardsPerShare = pool.accRewardsPerShare.add((sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply).to128());
 
        }
 
@@ -272,6 +268,7 @@ contract SDAOTokenStaking is Ownable {
        emit LogUpdatePool(_pid, pool.lastRewardBlock, lpSupply, pool.accRewardsPerShare);
 
     }
+
   }
 
 
@@ -292,18 +289,15 @@ contract SDAOTokenStaking is Ownable {
 
      if(lpSupply > 0){
 
-      if(block.number < pool.endOfEpochBlock) {
-
-          uint256 blocks = block.number.sub(pool.lastRewardBlock);
-          uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
-          accRewardsPerShare = accRewardsPerShare.add(sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply);
-      
+       uint256 blocks;
+      if(block.number < pool.endOfEpochBlock && pool.lastRewardBlock < pool.endOfEpochBlock) {
+          blocks = block.number.sub(pool.lastRewardBlock);
       } else {
-
-        uint256 blocks = pool.endOfEpochBlock.sub(pool.lastRewardBlock);
-        uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
-        accRewardsPerShare = accRewardsPerShare.add(sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply);
+        blocks = pool.endOfEpochBlock.sub(pool.lastRewardBlock);
       }
+      
+      uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
+      accRewardsPerShare = accRewardsPerShare.add(sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply);
 
     }
 
