@@ -41,7 +41,7 @@ contract SDAOTokenStaking is Ownable {
    */
   struct UserInfo {
     uint256 amount;
-    int256 rewardDebt;
+    uint256 rewardDebt;
   }
 
   /**
@@ -107,7 +107,7 @@ contract SDAOTokenStaking is Ownable {
    * @dev Total rewards received from governance for distribution.
    * Used to return remaining rewards if staking is canceled.
    */
-  uint256 public totalRewardsReceived;
+  uint256 public totalRewardsReceived = 0;
 
   function poolLength() external view returns (uint256) {
     return poolInfo.length;
@@ -151,6 +151,8 @@ contract SDAOTokenStaking is Ownable {
    * undistributed tokens.
    */
   function addRewards(uint256 amount) external onlyPointsAllocatorOrOwner {
+    require(msg.sender != address(0), "ERC20: transfer to the zero address");
+
     rewardsToken.safeTransferFrom(msg.sender, address(this), amount);
     totalRewardsReceived = totalRewardsReceived.add(amount);
     emit RewardsAdded(amount);
@@ -294,7 +296,7 @@ contract SDAOTokenStaking is Ownable {
 
     }
 
-    pending = int256(user.amount.mul(accRewardsPerShare) / ACC_REWARDS_PRECISION).sub(user.rewardDebt).toUInt256();
+    pending = uint256(user.amount.mul(accRewardsPerShare) / ACC_REWARDS_PRECISION).sub(user.rewardDebt);
   }
 
 
@@ -317,7 +319,7 @@ contract SDAOTokenStaking is Ownable {
     require (pool.endOfEpochBlock > block.number,"This pool epoch has ended. Please join staking new cession");
     
     user.amount = user.amount.add(_amount);
-    user.rewardDebt = user.rewardDebt.add(int256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
+    user.rewardDebt = user.rewardDebt.add(uint256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
 
     // Interactions
     lpToken[_pid].safeTransferFrom(msg.sender, address(this), _amount);
@@ -340,7 +342,7 @@ contract SDAOTokenStaking is Ownable {
     UserInfo storage user = userInfo[_pid][msg.sender];
 
     // Effects
-    user.rewardDebt = user.rewardDebt.sub(int256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
+    user.rewardDebt = user.rewardDebt.sub(uint256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
     user.amount = user.amount.sub(_amount);
 
     // Interactions
@@ -360,8 +362,8 @@ contract SDAOTokenStaking is Ownable {
 
     PoolInfo memory pool = updatePool(_pid);
     UserInfo storage user = userInfo[_pid][msg.sender];
-    int256 accumulatedRewards = int256(user.amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION);
-    uint256 _pendingRewards = accumulatedRewards.sub(user.rewardDebt).toUInt256();
+    uint256 accumulatedRewards = uint256(user.amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION);
+    uint256 _pendingRewards = accumulatedRewards.sub(user.rewardDebt);
 
     // Effects
     user.rewardDebt = accumulatedRewards;
@@ -383,11 +385,11 @@ contract SDAOTokenStaking is Ownable {
 
     PoolInfo memory pool = updatePool(_pid);
     UserInfo storage user = userInfo[_pid][msg.sender];
-    int256 accumulatedRewards = int256(user.amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION);
-    uint256 _pendingRewards = accumulatedRewards.sub(user.rewardDebt).toUInt256();
+    uint256 accumulatedRewards = uint256(user.amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION);
+    uint256 _pendingRewards = accumulatedRewards.sub(user.rewardDebt);
 
     // Effects
-    user.rewardDebt = accumulatedRewards.sub(int256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
+    user.rewardDebt = accumulatedRewards.sub(uint256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
     user.amount = user.amount.sub(_amount);
 
     // Interactions
