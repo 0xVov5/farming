@@ -151,7 +151,7 @@ contract SDAOTokenStaking is Ownable {
    * undistributed tokens.
    */
   function addRewards(uint256 amount) external onlyPointsAllocatorOrOwner {
-    require(msg.sender != address(0), "ERC20: transfer to the zero address");
+   require(rewardsToken.balanceOf(msg.sender) > 0, "ERC20: not enough tokens to transfer");
 
     rewardsToken.safeTransferFrom(msg.sender, address(this), amount);
     totalRewardsReceived = totalRewardsReceived.add(amount);
