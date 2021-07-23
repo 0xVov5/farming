@@ -73,7 +73,6 @@ contract('SDAOTokenStaking', ([alice, bob, carol, dev, minter]) => {
 
           it('check cant deposit after end of epoch', async () => {
           
-            //=> block 0 = block 21
             
             this.sdaostaking = await SDAOTokenStaking.new(this.sdao.address, { from: minter });
             await this.sdao.approve(this.sdaostaking.address, "10000000000", { from: minter  });
