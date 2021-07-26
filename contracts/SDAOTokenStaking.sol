@@ -75,7 +75,7 @@ contract SDAOTokenStaking is Ownable {
 
   /// @dev Total rewards received from governance for distribution.
   /// Used to return remaining rewards if staking is canceled.
-  uint256 public totalRewardsReceived = 0;
+  uint256 public totalRewardsReceived;
 
   // ==========  Events  ==========
 
@@ -111,6 +111,7 @@ contract SDAOTokenStaking is Ownable {
   /// @dev Set the address of the points allocator.
   /// This account will have the ability to set allocation points for LP rewards.
   function setPointsAllocator(address _pointsAllocator) external onlyOwner {
+    require(_pointsAllocator != address(0), "Invalid points allocator address.");
     pointsAllocator = _pointsAllocator;
     emit PointsAllocatorSet(_pointsAllocator);
   }
@@ -164,7 +165,7 @@ contract SDAOTokenStaking is Ownable {
   /// @dev To get the rewards per block.
   function sdaoPerBlock(uint256 _pid) public view returns (uint256 amount) {
       PoolInfo memory pool = poolInfo[_pid];
-      amount = uint256(pool.tokenPerBlock);
+      amount = pool.tokenPerBlock;
   }
 
 
@@ -270,12 +271,13 @@ contract SDAOTokenStaking is Ownable {
     user.amount = user.amount.add(_amount);
     user.rewardDebt = user.rewardDebt.add(int256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
 
-    // Interactions
-    lpToken[_pid].safeTransferFrom(msg.sender, address(this), _amount);
+    // Add to total supply
     pool.lpSupply = pool.lpSupply.add(_amount);
-
     // Update the pool back
     poolInfo[_pid] = pool;
+
+    // Interactions
+    lpToken[_pid].safeTransferFrom(msg.sender, address(this), _amount);
 
     emit Deposit(msg.sender, _pid, _amount, _to);
   }
@@ -298,12 +300,13 @@ contract SDAOTokenStaking is Ownable {
     user.rewardDebt = user.rewardDebt.sub(int256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
     user.amount = user.amount.sub(_amount);
 
-    // Interactions
-    lpToken[_pid].safeTransfer(_to, _amount);
+    // Subtract from total supply
     pool.lpSupply = pool.lpSupply.sub(_amount);
-
     // Update the pool back
     poolInfo[_pid] = pool;
+
+    // Interactions
+    lpToken[_pid].safeTransfer(_to, _amount);
 
     emit Withdraw(msg.sender, _pid, _amount, _to);
   }
@@ -354,16 +357,16 @@ contract SDAOTokenStaking is Ownable {
     user.rewardDebt = accumulatedRewards.sub(int256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
     user.amount = user.amount.sub(_amount);
 
+    // Subtract from total supply
+    pool.lpSupply = pool.lpSupply.sub(_amount);
+    // Update the pool back
+    poolInfo[_pid] = pool;
+
     // Interactions
     if(_pendingRewards > 0) {
       rewardsToken.safeTransfer(_to, _pendingRewards);
     }
     lpToken[_pid].safeTransfer(_to, _amount);
-
-    pool.lpSupply = pool.lpSupply.sub(_amount);
-
-    // Update the pool back
-    poolInfo[_pid] = pool;
 
     emit Harvest(msg.sender, _pid, _pendingRewards);
     emit Withdraw(msg.sender, _pid, _amount, _to);
@@ -381,14 +384,14 @@ contract SDAOTokenStaking is Ownable {
     uint256 amount = user.amount;
     user.amount = 0;
     user.rewardDebt = 0;
-    // Note: transfer can fail or succeed if `amount` is zero.
-    lpToken[_pid].safeTransfer(_to, amount);
-    
+
     PoolInfo memory pool = updatePool(_pid);
     pool.lpSupply = pool.lpSupply.sub(amount);
-
     // Update the pool back
     poolInfo[_pid] = pool;
+
+    // Note: transfer can fail or succeed if `amount` is zero.
+    lpToken[_pid].safeTransfer(_to, amount);
 
     emit EmergencyWithdraw(msg.sender, _pid, amount, _to);
   }
