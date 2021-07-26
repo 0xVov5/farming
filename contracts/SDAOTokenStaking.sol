@@ -59,7 +59,7 @@ contract SDAOTokenStaking is Ownable {
   /** ==========  Storage  ========== */
 
   /// @dev Indicates whether a staking pool exists for a given staking token.
-  mapping(address => bool) public stakingPoolExists;
+  //mapping(address => bool) public stakingPoolExists;
   
   /// @dev Info of each staking pool.
   PoolInfo[] public poolInfo;
@@ -137,9 +137,11 @@ contract SDAOTokenStaking is Ownable {
   /// @dev Add a new LP to the pool.
   /// Can only be called by the owner or the points allocator.
   /// @param _lpToken Address of the LP ERC-20 token.
+  /// @param _sdaoPerBlock Rewards per block.
+  /// @param _endofepochblock Epocs end block number.
   function add(IERC20 _lpToken, uint256 _sdaoPerBlock, uint64 _endofepochblock) public onlyPointsAllocatorOrOwner {
 
-    // Sridhar - This is not needed as we are going to use the contract for multiple pools with the same LP Tokens
+    //This is not needed as we are going to use the contract for multiple pools with the same LP Tokens
     //require(!stakingPoolExists[address(_lpToken)], " Staking pool already exists.");
     
     require(_endofepochblock > block.number, "Cannot create the pool for past time.");
@@ -167,9 +169,6 @@ contract SDAOTokenStaking is Ownable {
       PoolInfo memory pool = poolInfo[_pid];
       amount = pool.tokenPerBlock;
   }
-
-
-  // Sridhar - check the need of the following function - Seems to be handled in the updatePool function itself
 
   /// @dev Update reward variables for all pools in `pids`.
   /// Note: This can become very expensive.
