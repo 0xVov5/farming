@@ -30,7 +30,7 @@ contract SDAOTokenStaking is Ownable {
   /// @param rewardDebt The amount of rewards entitled to the user.
   struct UserInfo {
     uint256 amount;
-    uint256 rewardDebt;
+    int256 rewardDebt;
   }
 
 
@@ -248,7 +248,7 @@ contract SDAOTokenStaking is Ownable {
 
     }
 
-    pending = uint256(user.amount.mul(accRewardsPerShare) / ACC_REWARDS_PRECISION).sub(user.rewardDebt);
+    pending = int256(user.amount.mul(accRewardsPerShare) / ACC_REWARDS_PRECISION).sub(user.rewardDebt).toUInt256();
   }
 
 
@@ -268,7 +268,7 @@ contract SDAOTokenStaking is Ownable {
     require (pool.endOfEpochBlock > block.number,"This pool epoch has ended. Please join staking new session.");
     
     user.amount = user.amount.add(_amount);
-    user.rewardDebt = user.rewardDebt.add(uint256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
+    user.rewardDebt = user.rewardDebt.add(int256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
 
     // Interactions
     lpToken[_pid].safeTransferFrom(msg.sender, address(this), _amount);
@@ -295,7 +295,7 @@ contract SDAOTokenStaking is Ownable {
     require(user.amount >= _amount && _amount > 0, "Invalid amount to withdraw.");
 
     // Effects
-    user.rewardDebt = user.rewardDebt.sub(uint256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
+    user.rewardDebt = user.rewardDebt.sub(int256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
     user.amount = user.amount.sub(_amount);
 
     // Interactions
@@ -319,8 +319,8 @@ contract SDAOTokenStaking is Ownable {
     PoolInfo memory pool = updatePool(_pid);
     UserInfo storage user = userInfo[_pid][msg.sender];
 
-    uint256 accumulatedRewards = uint256(user.amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION);
-    uint256 _pendingRewards = accumulatedRewards.sub(user.rewardDebt);
+    int256 accumulatedRewards = int256(user.amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION);
+    uint256 _pendingRewards = accumulatedRewards.sub(user.rewardDebt).toUInt256();
 
     // Effects
     user.rewardDebt = accumulatedRewards;
@@ -347,11 +347,11 @@ contract SDAOTokenStaking is Ownable {
     // Check if the user has stake in the pool
     require(user.amount >= _amount && _amount > 0, "Cannot withdraw more than staked.");
 
-    uint256 accumulatedRewards = uint256(user.amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION);
-    uint256 _pendingRewards = accumulatedRewards.sub(user.rewardDebt);
+    int256 accumulatedRewards = int256(user.amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION);
+    uint256 _pendingRewards = accumulatedRewards.sub(user.rewardDebt).toUInt256();
 
     // Effects
-    user.rewardDebt = accumulatedRewards.sub(uint256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
+    user.rewardDebt = accumulatedRewards.sub(int256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
     user.amount = user.amount.sub(_amount);
 
     // Interactions
