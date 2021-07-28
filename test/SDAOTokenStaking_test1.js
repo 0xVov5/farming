@@ -247,6 +247,113 @@ contract('SDAOTokenStaking', ([alice, bob, carol, dev, minter]) => {
         });
 
 
+        it('Create the new epoc with the real production numbers', async () => { 
+
+            // Stake Amount for Multiple Stakers
+            let stakeAmountAliceBN = (new BigNumber(8570)).times(rewardsFactor);
+            let stakeAmountBobBN = (new BigNumber(6312)).times(rewardsFactor);
+            let stakeAmountCarolBN = (new BigNumber(948)).times(rewardsFactor);
+            
+            // constant approval amount
+            const approveAmountBN = (new BigNumber("10000")).times(rewardsFactor);
+
+            // Alice, Bob, Carol - Approve for the lp2 token address to use it in staking
+            await this.lp2.approve(this.sdaostaking.address, approveAmountBN.toFixed(), { from: alice });
+            await this.lp2.approve(this.sdaostaking.address, approveAmountBN.toFixed(), { from: bob });
+            await this.lp2.approve(this.sdaostaking.address, approveAmountBN.toFixed(), { from: carol });
+
+            // Pool details
+            const poolId = (await this.sdaostaking.poolLength()).toNumber();
+            let blockNumber = await web3.eth.getBlockNumber();
+            let endEpoCBlockNumber = blockNumber + 40;
+            let rewardPerBlock = "195343022347242000";   // ~0.1953 Rewards per Block
+            const rewardPerBlockBN = new BigNumber(rewardPerBlock)
+
+            // Add a New pool for LP2 Tokens
+            await this.sdaostaking.add(this.lp2.address, rewardPerBlockBN.toFixed(), endEpoCBlockNumber , { from: minter }); 
+
+            // Pool Id should get incremented
+            assert.equal((await this.sdaostaking.poolLength()).toNumber(), poolId + 1);
+
+            //Deposits in the Pool by advancing by 5 blocks for each deposits
+            const depositAliceLog = await this.sdaostaking.deposit(poolId, stakeAmountAliceBN.toFixed(), alice, { from: alice });
+            await time.advanceBlockTo(blockNumber + 5);
+            const depositBobLog = await this.sdaostaking.deposit(poolId, stakeAmountBobBN.toFixed(), bob, { from: bob });
+            await time.advanceBlockTo(blockNumber + 10);
+            const depositCarolLog = await this.sdaostaking.deposit(poolId, stakeAmountCarolBN.toFixed(), carol, { from: carol });
+
+
+            // Capture the Rewards & LP2 Token balance after LP2 deposit
+            const aliceRewardsTokenBal_b = await this.sdao.balanceOf(alice);
+            const aliceLPTokenBal_b = await this.lp2.balanceOf(alice);
+            const bobRewardsTokenBal_b = await this.sdao.balanceOf(bob);
+            const bobLPTokenBal_b = await this.lp2.balanceOf(bob);
+            const carolRewardsTokenBal_b = await this.sdao.balanceOf(carol);
+            const carolLPTokenBal_b = await this.lp2.balanceOf(carol);
+
+            // Advance by another 20 Blocks
+            await time.advanceBlockTo(blockNumber + 20);
+
+            // Bob goes with Harvest
+            const expectedRewardBob_1 = await this.sdaostaking.pendingRewards(poolId,bob);
+            await this.sdaostaking.harvest(poolId, bob, { from: bob });
+
+            // Bob Rewards Token Balance should increase
+
+
+            // Advance by another 5 Blocks
+            await time.advanceBlockTo(blockNumber + 25);
+
+            // Carol Withdraws & Harvest
+            const expectedRewardCarol = await this.sdaostaking.pendingRewards(poolId,carol);
+            const withdrawHarvestCarolLog = await this.sdaostaking.withdrawAndHarvest(poolId, stakeAmountCarolBN.toFixed(), carol, { from: carol });
+
+
+            // Carol Rewards & LP Token Balance should increase
+            const calcRewardsCarol = rewardPerBlockBN.times(
+                                        (withdrawHarvestCarolLog.receipt.blockNumber - depositCarolLog.receipt.blockNumber - 1)
+                                    ).times(rewardsFactor).div(
+                                        stakeAmountAliceBN.plus(stakeAmountBobBN).plus(stakeAmountCarolBN)
+                                    ).times(stakeAmountCarolBN).div(rewardsFactor);
+
+            // Move to end of the epoc
+            await time.advanceBlockTo(endEpoCBlockNumber + 10);
+
+
+            // Alice, Bob Withdraws and Harvest
+            const expectedRewardAlice = await this.sdaostaking.pendingRewards(poolId,alice);
+            const expectedRewardBob_2 = await this.sdaostaking.pendingRewards(poolId,bob);
+            //const expectedRewardCarol_0 = await this.sdaostaking.pendingRewards(poolId,carol);
+            await this.sdaostaking.withdrawAndHarvest(poolId, stakeAmountAliceBN.toFixed(), alice, { from: alice });
+            await this.sdaostaking.withdrawAndHarvest(poolId, stakeAmountBobBN.toFixed(), bob, { from: bob });
+
+            // Capture the Rewards & LP2 Token balance after Withdraw
+            const aliceRewardsTokenBal_a = await this.sdao.balanceOf(alice);
+            const aliceLPTokenBal_a = await this.lp2.balanceOf(alice);
+            const bobRewardsTokenBal_a = await this.sdao.balanceOf(bob);
+            const bobLPTokenBal_a = await this.lp2.balanceOf(bob);
+            const carolRewardsTokenBal_a = await this.sdao.balanceOf(carol);
+            const carolLPTokenBal_a = await this.lp2.balanceOf(carol);
+
+// console.log("a rewards - ", (new BigNumber(expectedRewardAlice)).toFixed());
+// console.log("b rewards - ", (new BigNumber(expectedRewardBob_1)).toFixed());
+// console.log("b rewards - ", (new BigNumber(expectedRewardBob_2)).toFixed());
+// console.log("c rewards - ", (new BigNumber(expectedRewardCarol)).toFixed());
+
+            assert.equal((new BigNumber(aliceRewardsTokenBal_a)).toFixed(), (new BigNumber(aliceRewardsTokenBal_b)).plus(expectedRewardAlice).toFixed());
+            assert.equal((new BigNumber(aliceLPTokenBal_a)).toFixed(), (new BigNumber(aliceLPTokenBal_b)).plus(stakeAmountAliceBN).toFixed());
+
+            // Bob has two time harvest & withdrawAndHarvest
+            //assert.equal((new BigNumber(bobRewardsTokenBal_a)).toFixed(), (new BigNumber(bobRewardsTokenBal_b)).plus(expectedRewardBob_1).plus(expectedRewardBob_2).toFixed());
+            assert.equal((new BigNumber(bobLPTokenBal_a)).toFixed(), (new BigNumber(bobLPTokenBal_b)).plus(stakeAmountBobBN).toFixed());
+
+            //assert.equal((new BigNumber(carolRewardsTokenBal_a)).toFixed(), (new BigNumber(carolRewardsTokenBal_b)).plus(expectedRewardCarol).toFixed());
+            assert.equal((new BigNumber(carolLPTokenBal_a)).toFixed(), (new BigNumber(carolLPTokenBal_b)).plus(stakeAmountCarolBN).toFixed());
+
+
+        });
+
+
         // it('check if reward gets updated after end of epoch', async () => {
           
         //     //=> block 0 = block 21
