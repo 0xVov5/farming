@@ -246,7 +246,6 @@ contract('SDAOTokenStaking', ([alice, bob, carol, dev, minter]) => {
         
         });
 
-
         it('Create the new epoc with the real production numbers - 1 ', async () => { 
 
             // Stake Amount for Multiple Stakers
@@ -297,9 +296,6 @@ contract('SDAOTokenStaking', ([alice, bob, carol, dev, minter]) => {
             // Bob goes with Harvest
             const expectedRewardBob_1 = await this.sdaostaking.pendingRewards(poolId,bob);
             await this.sdaostaking.harvest(poolId, bob, { from: bob });
-
-            // Bob Rewards Token Balance should increase
-
 
             // Advance by another 5 Blocks
             await time.advanceBlockTo(blockNumber + 25);
@@ -404,27 +400,19 @@ contract('SDAOTokenStaking', ([alice, bob, carol, dev, minter]) => {
             const expectedRewardBob_1 = await this.sdaostaking.pendingRewards(poolId,bob);
             await this.sdaostaking.harvest(poolId, bob, { from: bob });
 
-            // Bob Rewards Token Balance should increase
-
-
             // Advance by another 5 Blocks
             await time.advanceBlockTo(blockNumber + 25);
 
-            // Carol Withdraws & Harvest
+            // Carol Withdraws All LP Tokens
             const expectedRewardCarol = await this.sdaostaking.pendingRewards(poolId,carol);
-            const withdrawHarvestCarolLog = await this.sdaostaking.withdrawAndHarvest(poolId, stakeAmountCarolBN.toFixed(), carol, { from: carol });
-
-
-            // Carol Rewards & LP Token Balance should increase
-            const calcRewardsCarol = rewardPerBlockBN.times(
-                                        (withdrawHarvestCarolLog.receipt.blockNumber - depositCarolLog.receipt.blockNumber - 1)
-                                    ).times(rewardsFactor).div(
-                                        stakeAmountAliceBN.plus(stakeAmountBobBN).plus(stakeAmountCarolBN)
-                                    ).times(stakeAmountCarolBN).div(rewardsFactor);
+            //const withdrawHarvestCarolLog = await this.sdaostaking.withdrawAndHarvest(poolId, stakeAmountCarolBN.toFixed(), carol, { from: carol });
+            const withdrawCarolLog = await this.sdaostaking.withdraw(poolId, stakeAmountCarolBN.toFixed(), carol, { from: carol });
 
             // Move to end of the epoc
             await time.advanceBlockTo(endEpoCBlockNumber + 10);
 
+            // Carol Harvest
+            await this.sdaostaking.harvest(poolId, carol, { from: carol });
 
             // Alice, Bob Withdraws and Harvest
             const expectedRewardAlice = await this.sdaostaking.pendingRewards(poolId,alice);
@@ -459,6 +447,79 @@ contract('SDAOTokenStaking', ([alice, bob, carol, dev, minter]) => {
 
         });
 
+        it('Emergency Withdraw by Staker', async () => { 
+
+            // Stake Amount for Multiple Stakers
+            let stakeAmountAliceBN = (new BigNumber(570)).times(rewardsFactor);
+            let stakeAmountBobBN = (new BigNumber(312)).times(rewardsFactor);
+
+            // constant approval amount
+            const approveAmountBN = (new BigNumber("200000")).times(rewardsFactor);
+
+            // Alice, Bob, Carol - Approve for the lp2 token address to use it in staking
+            await this.lp2.approve(this.sdaostaking.address, approveAmountBN.toFixed(), { from: alice });
+            await this.lp2.approve(this.sdaostaking.address, approveAmountBN.toFixed(), { from: bob });
+
+            // Pool details
+            const poolId = (await this.sdaostaking.poolLength()).toNumber();
+            let blockNumber = await web3.eth.getBlockNumber();
+            let endEpoCBlockNumber = blockNumber + 40;
+            let rewardPerBlock = "195343022347242000";   // ~0.1953 Rewards per Block
+            const rewardPerBlockBN = new BigNumber(rewardPerBlock)
+
+            // Add a New pool for LP2 Tokens
+            await this.sdaostaking.add(this.lp2.address, rewardPerBlockBN.toFixed(), endEpoCBlockNumber , { from: minter }); 
+
+            // Pool Id should get incremented
+            assert.equal((await this.sdaostaking.poolLength()).toNumber(), poolId + 1);
+
+            //Deposits in the Pool by advancing by 5 blocks for each deposits
+            const depositAliceLog = await this.sdaostaking.deposit(poolId, stakeAmountAliceBN.toFixed(), alice, { from: alice });
+            await time.advanceBlockTo(blockNumber + 5);
+            const depositBobLog = await this.sdaostaking.deposit(poolId, stakeAmountBobBN.toFixed(), bob, { from: bob });
+            await time.advanceBlockTo(blockNumber + 10);
+
+
+            // Alice did an emergency withdraw
+            const aliceRewardsTokenBal_a = await this.sdao.balanceOf(alice);
+            const aliceLPTokenBal_b = await this.lp2.balanceOf(alice);
+            await this.sdaostaking.emergencyWithdraw(poolId, alice, { from: alice });
+            const aliceRewardsTokenBal_b = await this.sdao.balanceOf(alice);
+            const aliceLPTokenBal_a = await this.lp2.balanceOf(alice);
+
+            assert.equal((new BigNumber(aliceRewardsTokenBal_a)).toFixed(), (new BigNumber(aliceRewardsTokenBal_b)).toFixed());
+            assert.equal((new BigNumber(aliceLPTokenBal_a)).toFixed(), (new BigNumber(aliceLPTokenBal_b)).plus(stakeAmountAliceBN).toFixed());
+
+
+            // Move to end of the epoc
+            await time.advanceBlockTo(endEpoCBlockNumber + 10);
+
+            // Bob does withdraw and harvest
+            const bobLPTokenBal_b = await this.lp2.balanceOf(bob);
+            const expectedRewardBob = await this.sdaostaking.pendingRewards(poolId,bob);
+
+            await this.sdaostaking.withdrawAndHarvest(poolId, stakeAmountBobBN.toFixed(), bob, { from: bob });
+            const bobLPTokenBal_a = await this.lp2.balanceOf(bob);
+
+            assert.equal((new BigNumber(bobLPTokenBal_a)).toFixed(), (new BigNumber(bobLPTokenBal_b)).plus(stakeAmountBobBN).toFixed());
+
+        });
+
+        it('Owner withdrawing tokens from the Contract ', async () => { 
+
+            const minterRewardsTokenBal_b = await this.sdao.balanceOf(minter);
+            const contractRewardsTokenBal_b = await this.sdao.balanceOf(this.sdaostaking.address);
+
+            // Owner withdraws the tokens
+            await this.sdaostaking.withdrawETHAndAnyTokens(this.sdao.address, {from: minter});
+
+            const minterRewardsTokenBal_a = await this.sdao.balanceOf(minter);
+            const contractRewardsTokenBal_a = await this.sdao.balanceOf(this.sdaostaking.address);         
+
+            assert.equal((new BigNumber(minterRewardsTokenBal_a)).toFixed(), (new BigNumber(minterRewardsTokenBal_b).plus(contractRewardsTokenBal_b)).toFixed());
+            assert.equal((new BigNumber(contractRewardsTokenBal_a)), 0);
+
+        })
 
         // it('check if reward gets updated after end of epoch', async () => {
           
