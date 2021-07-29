@@ -1,4 +1,4 @@
-const { expectRevert, time } = require('@openzeppelin/test-helpers');
+const { BN, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
 const { assert } = require('chai');
 const SDAOToken = artifacts.require('ERC20Mock');
 const SDAOTokenStaking = artifacts.require('SDAOTokenStaking');
@@ -136,6 +136,25 @@ contract('SDAOTokenStaking', ([alice, bob, carol, dev, minter]) => {
 
             await time.advanceBlockTo(blockNumber + 20);
             assert.equal((new BigNumber(await this.sdaostaking.pendingRewards(poolId,alice))).toFixed(), (new BigNumber(17)).times(rewardsFactor).toFixed());
+
+
+            // All Negative Test Cases
+            // Alice to withdraw and Harvest higher Amount then deposited - Should fail.
+            await expectRevert(this.sdaostaking.withdrawAndHarvest(poolId, stakeAmountBN.plus(stakeAmountBN).toFixed(), alice, { from: alice }), "Cannot withdraw more than staked.");
+
+            // Alice to withdraw higher Amount then deposited - Should fail.
+            await expectRevert(this.sdaostaking.withdraw(poolId, stakeAmountBN.plus(stakeAmountBN).toFixed(), alice, { from: alice }), "Invalid amount to withdraw.");
+
+            // Bob to withdraw and Harvest without deposit - Should fail.
+            await expectRevert(this.sdaostaking.withdrawAndHarvest(poolId, stakeAmountBN.toFixed(), bob, { from: bob }), "Cannot withdraw more than staked.");
+
+            // Bob to withdraw without deposit - Should fail.
+            await expectRevert(this.sdaostaking.withdraw(poolId, stakeAmountBN.toFixed(), bob, { from: bob }), "Invalid amount to withdraw.");
+
+            // Bob to Harvest without harvest - Should have no transfer with Harvest Event.
+            const receiptHarvestBob = await this.sdaostaking.harvest(poolId, bob, { from: bob });
+            // Validated Manually as the expectEvent has a bug with the BN
+            //expectEvent(receiptHarvestBob, 'Harvest', {user: bob, pid: poolId, amount: (new BN(0)).toString()});
 
             // At the end of the epoc
             await time.advanceBlockTo(blockNumber + 40);
@@ -520,6 +539,7 @@ contract('SDAOTokenStaking', ([alice, bob, carol, dev, minter]) => {
             assert.equal((new BigNumber(contractRewardsTokenBal_a)), 0);
 
         })
+
 
         // it('check if reward gets updated after end of epoch', async () => {
           
