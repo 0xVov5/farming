@@ -17,7 +17,7 @@ at commit hash 10148a31d9192bc803dac5d24fe0319b52ae99a4.
 *************************************************************************************************/
 
 
-contract SDAOBondedTokenStaking is Ownable {
+contract SDAOBondedTokenStakingV2 is Ownable {
   using BoringMath for uint256;
   using BoringMath128 for uint128;
   using BoringERC20 for IERC20;
@@ -34,7 +34,7 @@ contract SDAOBondedTokenStaking is Ownable {
 
   IERC20 public immutable discountToken;
 
-  uint256 private maxdeposit = 50000 * 1e18;
+  uint256 private maxdeposit = 25000 * 1e18;
 
 /** ==========  Structs  ========== */
 
@@ -56,12 +56,12 @@ contract SDAOBondedTokenStaking is Ownable {
    * @param allocPoint The amount of allocation points assigned to the pool.
    */
   struct PoolInfo {
-    uint256 tokenPerBlock;
-    uint256 lpSupply;
-    uint128 accRewardsPerShare;
+    uint256 startBlock;
+    uint256 rewardAmountForEpoc;
+    uint256  totalStakeAmount;
+    uint256 windowRewardAmount;
     uint64 lastRewardBlock;
     uint endOfEpochBlock;
-    uint64 allocPoint;
   }
 
 /** ==========  Events  ========== */
@@ -98,10 +98,6 @@ contract SDAOBondedTokenStaking is Ownable {
    */
   mapping(uint256 => mapping(address => UserInfo)) public userInfo;
 
-  /**
-   * @dev Total allocation points. Must be the sum of all allocation points in all pools.
-   */
-  uint256 public totalAllocPoint = 0;
 
   /**
    * @dev Account allowed to allocate points.
@@ -171,20 +167,20 @@ contract SDAOBondedTokenStaking is Ownable {
    * @param _allocPoint AP of the new pool.
    * @param _lpToken Address of the LP ERC-20 token.
    */
-  function add(uint64 _allocPoint, IERC20 _lpToken,uint256 _sdaoPerBlock,uint _endofepochblock) public onlyPointsAllocatorOrOwner {
+  function add(IERC20 _lpToken,uint256 _windowTotalStake, uint256 _rewardAmountForEpoc,uint _endofepochblock, uint256 _startBlock,uint256 _lastRewardBlock) public onlyPointsAllocatorOrOwner {
     require(!stakingPoolExists[address(_lpToken)], " Staking pool already exists.");
     uint256 pid = poolInfo.length;
-    totalAllocPoint = totalAllocPoint.add(_allocPoint);
+
     lpToken[pid] = _lpToken;
 
     poolInfo.push(PoolInfo({
-      tokenPerBlock: _sdaoPerBlock,
+      startBlock : _startBlock,
+      windowTotalStake: _windowTotalStake,
+      rewardAmountForEpoc: _rewardAmountForEpoc,
       endOfEpochBlock:_endofepochblock,
-      lastRewardBlock: block.number.to64(),
-      lpSupply:0,
-      allocPoint:_allocPoint,
-      accRewardsPerShare: 0
+      lastRewardBlock: _lastRewardBlock,
     }));
+
     stakingPoolExists[address(_lpToken)] = true;
 
     emit LogPoolAddition(pid,_allocPoint, _lpToken);
@@ -204,29 +200,6 @@ contract SDAOBondedTokenStaking is Ownable {
     }
   }
 
-  /**
-   * @dev Update reward variables of the given pool.
-   * @param _pid The index of the pool. See `poolInfo`.
-   * @return pool Returns the pool that was updated.
-   */
-  function updatePool(uint256 _pid) private returns (PoolInfo memory pool) {
-    pool = poolInfo[_pid];
-    if (block.number > pool.lastRewardBlock) {
-      //uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
-      uint256 lpSupply = pool.lpSupply;
-
-      if (lpSupply > 0) {
-          uint256 blocks = block.number.sub(pool.lastRewardBlock);
-          uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
-          pool.accRewardsPerShare = pool.accRewardsPerShare.add((sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply).to128());
-      }
-
-      pool.lastRewardBlock = block.number.to64();
-      poolInfo[_pid] = pool;
-      emit LogUpdatePool(_pid, pool.lastRewardBlock, lpSupply, pool.accRewardsPerShare);
-    }
-  }
-
 /** ==========  Users  ========== */
 
   /**
@@ -238,23 +211,18 @@ contract SDAOBondedTokenStaking is Ownable {
   function pendingRewards(uint256 _pid, address _user) external view returns (uint256 pending) {
     PoolInfo memory pool = poolInfo[_pid];
     UserInfo storage user = userInfo[_pid][_user];
-    uint256 accRewardsPerShare = pool.accRewardsPerShare;
-    //uint256 lpSupply = lpToken[_pid].balanceOf(address(this));
-    uint256 lpSupply = pool.lpSupply;
+    pending =  _calculateRewardAmount(_pid,user.amount);
 
-    if (block.number > pool.lastRewardBlock && lpSupply != 0) {
-        uint256 blocks = block.number.sub(pool.lastRewardBlock);
-        uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
-        accRewardsPerShare = accRewardsPerShare.add(sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply);
-    }
-    pending = int256(user.amount.mul(accRewardsPerShare) / ACC_REWARDS_PRECISION).sub(user.rewardDebt).toUInt256();
   }
 
 
-    function sdaoPerBlock(uint256 _pid) public view returns (uint256 amount) {
-        PoolInfo memory pool = poolInfo[_pid];
-        amount = uint256(pool.tokenPerBlock);
-    }
+  function _calculateRewardAmount(uint256 _pid, uint256 stakeAmount) internal view returns(uint256) {
+
+    PoolInfo memory pool = poolInfo[_pid];
+    uint256 calcRewardAmount;
+    calcRewardAmount = stakeAmount.mul(pool.windowRewardAmount).div(pool.windowTotalStake.sub(pool.windowRewardAmount));
+    return calcRewardAmount;
+  }
 
   /**
    * @dev Deposit LP tokens to earn rewards.
@@ -262,24 +230,22 @@ contract SDAOBondedTokenStaking is Ownable {
    * @param _amount LP token amount to deposit.
    * @param _to The receiver of `_amount` deposit benefit.
    */
+
   function deposit(uint256 _pid, uint256 _amount, address _to) public {
-    PoolInfo memory pool = updatePool(_pid);
+
     UserInfo storage user = userInfo[_pid][_to];
-    uint _endOfLockup = block.timestamp + 60 days;
 
     // check if epoch as ended
     require (pool.endOfEpochBlock > block.number,"This pool epoch has ended. Please join staking new cession");
 
-    require (_amount < maxdeposit, "you cannot stake more than 50000 sdao");
-    
+    require (_amount < maxdeposit, "you cannot stake more than 25000 sdao");
     
     user.amount = user.amount.add(_amount);
-    user.rewardDebt = user.rewardDebt.add(int256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
-    
+
     // Interactions
     lpToken[_pid].safeTransferFrom(msg.sender, address(this), _amount);
 
-    pool.lpSupply.add(_amount);
+    pool.windowTotalStake.add(_amount);
 
     emit Deposit(msg.sender, _pid, _amount, _to);
   }
@@ -294,18 +260,16 @@ contract SDAOBondedTokenStaking is Ownable {
 
     require(_to != address(0), "ERC20: transfer to the zero address");
    
-    PoolInfo memory pool = updatePool(_pid);
     UserInfo storage user = userInfo[_pid][msg.sender];
      require (user.endOfLockup > block.timestamp,"you cannot harvest yet");
 
-    // Effects
-    user.rewardDebt = user.rewardDebt.sub(int256(_amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION));
+
     user.amount = user.amount.sub(_amount);
 
     // Interactions
     lpToken[_pid].safeTransfer(_to, _amount);
 
-    pool.lpSupply.sub(_amount);
+    pool.windowTotalStake.sub(_amount);
 
     emit Withdraw(msg.sender, _pid, _amount, _to);
   }
@@ -318,18 +282,17 @@ contract SDAOBondedTokenStaking is Ownable {
   function harvest(uint256 _pid, address _to) public {
     require(_to != address(0), "ERC20: transfer to the zero address");
 
-    PoolInfo memory pool = updatePool(_pid);
     UserInfo storage user = userInfo[_pid][msg.sender];
-    int256 accumulatedRewards = int256(user.amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION);
-    uint256 _pendingRewards = accumulatedRewards.sub(user.rewardDebt).toUInt256();
+
+
+    uint256 _pendingRewards = _calculateRewardAmount(_pid,user.amount);
+
     uint256 amount = user.amount /100;
     uint256 minimumreward = amount.mul(30);
 
-    require (user.endOfLockup > block.timestamp,"you cannot harvest yet");
+    require (pool.endOfLockup > block.timestamp,"you cannot harvest yet");
     
-    // Effects
-    user.rewardDebt = accumulatedRewards;
-
+ 
     // Interactions
     rewardsToken.safeTransfer(_to, _pendingRewards);
 
@@ -337,11 +300,19 @@ contract SDAOBondedTokenStaking is Ownable {
 
       discountToken.safeTransfer(_to, minimumreward);
 
+      user.amount = user.amount.sub(amount);
+
+      pool.windowTotalStake.sub(_amount);
+
       emit Harvest(msg.sender, _pid, minimumreward);
 
     } else {
 
       discountToken.safeTransfer(_to, _pendingRewards);
+
+      user.amount = user.amount.sub(amount);
+
+      pool.windowTotalStake.sub(_amount);
 
       emit Harvest(msg.sender, _pid, _pendingRewards);
     }
@@ -358,10 +329,11 @@ contract SDAOBondedTokenStaking is Ownable {
   function withdrawAndHarvest(uint256 _pid, uint256 _amount, address _to) public {
     require(_to != address(0), "ERC20: transfer to the zero address");
 
-    PoolInfo memory pool = updatePool(_pid);
     UserInfo storage user = userInfo[_pid][msg.sender];
-    int256 accumulatedRewards = int256(user.amount.mul(pool.accRewardsPerShare) / ACC_REWARDS_PRECISION);
-    uint256 _pendingRewards = accumulatedRewards.sub(user.rewardDebt).toUInt256();
+    
+
+    uint256 _pendingRewards = _calculateRewardAmount(_pid,user.amount);
+
     uint256 amount = user.amount /100;
     uint256 minimumreward = amount.mul(30);
     // Effects
@@ -375,17 +347,25 @@ contract SDAOBondedTokenStaking is Ownable {
 
     if(_pendingRewards < minimumreward ){
 
+      user.amount = user.amount.sub(amount);
+
       discountToken.safeTransfer(_to, minimumreward);
+
+      pool.windowTotalStake.sub(_amount);
 
     } else {
 
+      user.amount = user.amount.sub(amount);
+
       discountToken.safeTransfer(_to, _pendingRewards);
+
+      pool.windowTotalStake.sub(_amount);
 
     }
 
     lpToken[_pid].safeTransfer(_to, _amount);
 
-    pool.lpSupply.sub(_amount);
+    pool.windowTotalStake.sub(_amount);
 
 
     emit Harvest(msg.sender, _pid, _pendingRewards);
@@ -408,7 +388,7 @@ contract SDAOBondedTokenStaking is Ownable {
     lpToken[_pid].safeTransfer(_to, amount);
     
     PoolInfo memory pool = updatePool(_pid);
-    pool.lpSupply.sub(amount);
+    pool.windowTotalStake.sub(amount);
 
     emit EmergencyWithdraw(msg.sender, _pid, amount, _to);
   }
