@@ -12,7 +12,7 @@ contract SDAOBondedTokenStake is Ownable{
 
     struct StakeInfo {
         bool exist;
-        uint256 approvedAmount;
+        uint256 amount;
         uint256 rewardComputeIndex;
     }
 
@@ -82,7 +82,7 @@ contract SDAOBondedTokenStake is Ownable{
     modifier validStakeLimit(address staker, uint256 stakeAmount) {
 
         uint256 stakerTotalStake;
-        stakerTotalStake = stakeAmount.add(stakeHolderInfo[staker].approvedAmount);
+        stakerTotalStake = stakeAmount.add(stakeHolderInfo[staker].amount);
 
         // Check for Max Stake per Wallet and stake window max limit 
         require(
@@ -95,15 +95,12 @@ contract SDAOBondedTokenStake is Ownable{
 
     }
 
-    // SRIDHAR -------- Need to check the logic -- Check whether we need to verify with the CurrentStakeMap Index
-    // ---- Need to improvise the condition check
-
     // Check for claim - Stake Window should be either in submission phase or after end period
     modifier allowClaimStake(uint256 stakeMapIndex) {
 
         require(
-          (now >= stakeMap[currentStakeMapIndex].startPeriod && now <= stakeMap[currentStakeMapIndex].submissionEndPeriod && stakeHolderInfo[msg.sender].approvedAmount > 0) || 
-          (now > stakeMap[currentStakeMapIndex].endPeriod && stakeHolderInfo[msg.sender].approvedAmount > 0), "Invalid claim request");
+          (now >= stakeMap[currentStakeMapIndex].startPeriod && now <= stakeMap[currentStakeMapIndex].submissionEndPeriod && stakeHolderInfo[msg.sender].amount > 0) || 
+          (now > stakeMap[currentStakeMapIndex].endPeriod && stakeHolderInfo[msg.sender].amount > 0), "Invalid claim request");
         _;
 
     }
@@ -176,7 +173,7 @@ contract SDAOBondedTokenStake is Ownable{
         // Check if the user already staked in the past
         if(stakeInfo.exist) {
 
-            stakeInfo.approvedAmount = stakeInfo.approvedAmount.add(stakeAmount);
+            stakeInfo.amount = stakeInfo.amount.add(stakeAmount);
 
         } else {
 
@@ -184,7 +181,7 @@ contract SDAOBondedTokenStake is Ownable{
 
             // Create a new stake request
             req.exist = true;
-            req.approvedAmount = stakeAmount;
+            req.amount = stakeAmount;
             req.rewardComputeIndex = 0;
 
             // Add to the Stake Holders List
@@ -219,23 +216,21 @@ contract SDAOBondedTokenStake is Ownable{
     }
 
 
-    // SRIDHAR -- Check for the common modifier for Claim & withdraw stake functions....
-
     // To withdraw stake during submission phase
-    function withdrawStake(uint256 stakeMapIndex, uint256 stakeAmount) public {
+    function withdrawStake(uint256 stakeMapIndex, uint256 stakeAmount) public allowClaimStake(stakeMapIndex) {
 
-        require(
-            (now >= stakeMap[stakeMapIndex].startPeriod && now <= stakeMap[stakeMapIndex].submissionEndPeriod),
-            "Stake withdraw at this point is not allowed"
-        );
+        //require(
+        //    (now >= stakeMap[stakeMapIndex].startPeriod && now <= stakeMap[stakeMapIndex].submissionEndPeriod),
+        //    "Stake withdraw at this point is not allowed"
+        //);
 
         StakeInfo storage stakeInfo = stakeHolderInfo[msg.sender];
 
         // Validate the input Stake Amount
-        require(stakeAmount > 0 && stakeInfo.approvedAmount >= stakeAmount, "Cannot withdraw beyond stake amount");
+        require(stakeAmount > 0 && stakeInfo.amount >= stakeAmount, "Cannot withdraw beyond stake amount");
 
         // Update the staker balance in the staking window
-        stakeInfo.approvedAmount = stakeInfo.approvedAmount.sub(stakeAmount);
+        stakeInfo.amount = stakeInfo.amount.sub(stakeAmount);
 
         // Update the User balance
         balances[msg.sender] = balances[msg.sender].sub(stakeAmount);
@@ -247,6 +242,33 @@ contract SDAOBondedTokenStake is Ownable{
         require(token.transfer(msg.sender, stakeAmount), "Unable to transfer token to the account");
 
         emit WithdrawStake(stakeMapIndex, msg.sender, stakeAmount);
+    }
+
+    // To claim from the stake window
+    function claimStake(uint256 stakeMapIndex) public allowClaimStake(stakeMapIndex) {
+
+        StakeInfo storage stakeInfo = stakeHolderInfo[msg.sender];
+
+        uint256 stakeAmount;
+
+        // No more stake windows or in submission phase
+        stakeAmount = stakeInfo.amount;
+        stakeInfo.amount = 0;
+
+        // Update current stake period total stake
+        windowTotalStake = windowTotalStake.sub(stakeAmount);
+
+        // Check for balance in the contract
+        require(token.balanceOf(address(this)) >= stakeAmount, "Not enough balance in the contract");
+
+        // Update the User Balance
+        balances[msg.sender] = balances[msg.sender].sub(stakeAmount);
+
+        // Call the transfer function
+        require(token.transfer(msg.sender, stakeAmount), "Unable to transfer token back to the account");
+
+        emit ClaimStake(stakeMapIndex, msg.sender, stakeAmount);
+
     }
 
 
@@ -275,19 +297,19 @@ contract SDAOBondedTokenStake is Ownable{
         StakeInfo storage stakeInfo = stakeHolderInfo[staker];
 
         // Check if reward already computed
-        require(stakeInfo.approvedAmount > 0 && stakeInfo.rewardComputeIndex != stakeMapIndex, "Invalid reward request");
+        require(stakeInfo.amount > 0 && stakeInfo.rewardComputeIndex != stakeMapIndex, "Invalid reward request");
 
         // Calculate the totalAmount
         uint256 totalAmount;
         uint256 rewardAmount;
 
         // Calculate the reward amount for the current window
-        totalAmount = stakeInfo.approvedAmount;
+        totalAmount = stakeInfo.amount;
         rewardAmount = _calculateRewardAmount(stakeMapIndex, totalAmount);
         totalAmount = totalAmount.add(rewardAmount);
 
         // Add the reward amount
-        stakeInfo.approvedAmount = totalAmount;
+        stakeInfo.amount = totalAmount;
 
         // Update the reward compute index to avoid mulitple addition
         stakeInfo.rewardComputeIndex = stakeMapIndex;
@@ -309,33 +331,6 @@ contract SDAOBondedTokenStake is Ownable{
         }
     }
 
-    // To claim from the stake window
-    function claimStake(uint256 stakeMapIndex) public allowClaimStake(stakeMapIndex) {
-
-        StakeInfo storage stakeInfo = stakeHolderInfo[msg.sender];
-
-        uint256 stakeAmount;
-
-        // No more stake windows or in submission phase
-        stakeAmount = stakeInfo.approvedAmount;
-        stakeInfo.approvedAmount = 0;
-
-        // Update current stake period total stake
-        windowTotalStake = windowTotalStake.sub(stakeAmount);
-
-        // Check for balance in the contract
-        require(token.balanceOf(address(this)) >= stakeAmount, "Not enough balance in the contract");
-
-        // Update the User Balance
-        balances[msg.sender] = balances[msg.sender].sub(stakeAmount);
-
-        // Call the transfer function
-        require(token.transfer(msg.sender, stakeAmount), "Unable to transfer token back to the account");
-
-        emit ClaimStake(stakeMapIndex, msg.sender, stakeAmount);
-
-    }
-
     // AirDrop to Stake - Load existing stakes from Air Drop
     function airDropStakes(uint256 stakeMapIndex, address[] calldata staker, uint256[] calldata stakeAmount) external onlyOperator {
 
@@ -352,9 +347,9 @@ contract SDAOBondedTokenStake is Ownable{
 
             StakeInfo memory req;
 
-            // Create a stake request with approvedAmount
+            // Create a stake request with amount
             req.exist = true;
-            req.approvedAmount = stakeAmount[indx];
+            req.amount = stakeAmount[indx];
             req.rewardComputeIndex = 0;
 
             // Add to the Stake Holders List
@@ -379,23 +374,20 @@ contract SDAOBondedTokenStake is Ownable{
         return stakeHolders;
     }
 
-
-    // SRIDHAR --- Storage can be changed to Memory
-
     function getStakeInfo(address staker) 
     public 
     view
-    returns (bool found, uint256 approvedAmount, uint256 rewardComputeIndex) 
+    returns (bool found, uint256 amount, uint256 rewardComputeIndex) 
     {
 
-        StakeInfo storage stakeInfo = stakeHolderInfo[staker];
+        StakeInfo memory stakeInfo = stakeHolderInfo[staker];
         
         found = false;
         if(stakeInfo.exist) {
             found = true;
         }
 
-        approvedAmount = stakeInfo.approvedAmount;
+        amount = stakeInfo.amount;
         rewardComputeIndex = stakeInfo.rewardComputeIndex;
 
     }

@@ -95,7 +95,7 @@ console.log("Number of Accounts - ", accounts.length)
 
             const currentStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
 
-            const {found: found_a, approvedAmount: approvedAmount_a, rewardComputeIndex: rewardComputeIndex_a}
+            const {found: found_a, amount: amount_a, rewardComputeIndex: rewardComputeIndex_a}
             = await tokenStake.getStakeInfo.call("0x0000000000000000000000000000000000000000");
 
             const {startPeriod: startPeriod_a, submissionEndPeriod: submissionEndPeriod_a, endPeriod: endPeriod_a, maxStake: maxStake_a, windowRewardAmount: windowRewardAmount_a, windowMaxAmount: windowMaxAmount_a}
@@ -126,7 +126,7 @@ console.log("Number of Accounts - ", accounts.length)
 
             const contract_account_bal_b = (await tokenStake.balances(_account)).toNumber();
 
-            const {found: found_b, approvedAmount: approvedAmount_b, rewardComputeIndex: rewardComputeIndex_b}
+            const {found: found_b, amount: amount_b, rewardComputeIndex: rewardComputeIndex_b}
             = await tokenStake.getStakeInfo.call(_account);
 
             const {startPeriod: startPeriod_b, submissionEndPeriod: submissionEndPeriod_b, endPeriod: endPeriod_b, maxStake: maxStake_b, windowRewardAmount: windowRewardAmount_b, windowMaxAmount: windowMaxAmount_b}
@@ -137,7 +137,7 @@ console.log("Number of Accounts - ", accounts.length)
             // Submit the Stake
             await tokenStake.submitStake( _stakeAmount, {from:_account});
 
-            const {found: found_a, approvedAmount: approvedAmount_a, rewardComputeIndex: rewardComputeIndex_a}
+            const {found: found_a, amount: amount_a, rewardComputeIndex: rewardComputeIndex_a}
             = await tokenStake.getStakeInfo.call(_account);
 
             const {startPeriod: startPeriod_a, submissionEndPeriod: submissionEndPeriod_a, endPeriod: endPeriod_a, maxStake: maxStake_a, windowRewardAmount: windowRewardAmount_a, windowMaxAmount: windowMaxAmount_a}
@@ -154,7 +154,7 @@ console.log("Number of Accounts - ", accounts.length)
 
 
             // Stake Amount Should Increase
-            assert.equal(approvedAmount_a.toNumber(), approvedAmount_b.toNumber() + _stakeAmount);
+            assert.equal(amount_a.toNumber(), amount_b.toNumber() + _stakeAmount);
 
             // Wallet balance should reduce
             assert.equal(wallet_bal_a, wallet_bal_b - _stakeAmount);
@@ -179,7 +179,7 @@ console.log("Number of Accounts - ", accounts.length)
             // Contract Stake Balance
             const contract_account_bal_b = (await tokenStake.balances(_account)).toNumber();
 
-            const {found: found_b, approvedAmount: approvedAmount_b, rewardComputeIndex: rewardComputeIndex_b}
+            const {found: found_b, amount: amount_b, rewardComputeIndex: rewardComputeIndex_b}
             = await tokenStake.getStakeInfo.call(_account);
 
             const {startPeriod: startPeriod_b, submissionEndPeriod: submissionEndPeriod_b, endPeriod: endPeriod_b, maxStake: maxStake_b, windowRewardAmount: windowRewardAmount_b, windowMaxAmount: windowMaxAmount_b}
@@ -190,7 +190,7 @@ console.log("Number of Accounts - ", accounts.length)
             // Call Withdraw Stake
             await tokenStake.claimStake(_stakeMapIndex, {from:_account});
 
-            const {found: found_a, approvedAmount: approvedAmount_a, rewardComputeIndex: rewardComputeIndex_a}
+            const {found: found_a, amount: amount_a, rewardComputeIndex: rewardComputeIndex_a}
             = await tokenStake.getStakeInfo.call(_account);
 
             const windowTotalStake_a = (await tokenStake.windowTotalStake.call()).toNumber();
@@ -203,7 +203,7 @@ console.log("Number of Accounts - ", accounts.length)
             const contract_account_bal_a = (await tokenStake.balances(_account)).toNumber();
 
             let claimAmount = 0;
-            claimAmount = approvedAmount_b.toNumber();
+            claimAmount = amount_b.toNumber();
 
             // Wallet Balance should increase
             assert.equal(wallet_bal_b, wallet_bal_a - claimAmount );
@@ -218,18 +218,18 @@ console.log("Number of Accounts - ", accounts.length)
             assert.equal(windowTotalStake_a, windowTotalStake_b - claimAmount);
 
             // Claimable amount should be reset
-            assert.equal(approvedAmount_a.toNumber(), 0);
+            assert.equal(amount_a.toNumber(), 0);
 
 
             // // Amount in the respective staking period should reset to zero
-            // //assert.equal(approvedAmount_a.toNumber(), 0);
+            // //assert.equal(amount_a.toNumber(), 0);
             // if(claimableAmount_b.toNumber() > 0) {
                 
             //     // Claimable amount should be reset
             //     assert.equal(claimableAmount_a.toNumber(), 0);
 
             //     // There should not be any change to Approved Amount
-            //     assert.equal(approvedAmount_a.toNumber(), approvedAmount_b.toNumber());
+            //     assert.equal(amount_a.toNumber(), amount_b.toNumber());
 
             //     // There should not be any change to window total amount
             //     assert.equal(windowTotalStake_a, windowTotalStake_b);
@@ -237,7 +237,7 @@ console.log("Number of Accounts - ", accounts.length)
             // } else {
 
             //     // Claimable amount should be reset
-            //     assert.equal(approvedAmount_a.toNumber(), 0);
+            //     assert.equal(amount_a.toNumber(), 0);
 
             //     // There should not be any change to Claimable Amount
             //     assert.equal(claimableAmount_a.toNumber(), claimableAmount_b.toNumber());
@@ -301,7 +301,7 @@ console.log("Number of Accounts - ", accounts.length)
 
             const contract_account_bal_b = (await tokenStake.balances(_staker)).toNumber();
 
-            const {found: found_b, approvedAmount: approvedAmount_b, rewardComputeIndex: rewardComputeIndex_b}
+            const {found: found_b, amount: amount_b, rewardComputeIndex: rewardComputeIndex_b}
             = await tokenStake.getStakeInfo.call(_staker);
 
             const {startPeriod: startPeriod_b, submissionEndPeriod: submissionEndPeriod_b, endPeriod: endPeriod_b, maxStake: maxStake_b, windowRewardAmount: windowRewardAmount_b, windowMaxAmount: windowMaxAmount_b}
@@ -313,7 +313,7 @@ console.log("Number of Accounts - ", accounts.length)
             await tokenStake.computeAndAddReward(existingStakeMapIndex, _staker, {from:_account});
 
             // Current Stake
-            const {found: found_a, approvedAmount: approvedAmount_a, rewardComputeIndex: rewardComputeIndex_a}
+            const {found: found_a, amount: amount_a, rewardComputeIndex: rewardComputeIndex_a}
             = await tokenStake.getStakeInfo.call(_staker);
 
             // Staking Window
@@ -328,10 +328,10 @@ console.log("Number of Accounts - ", accounts.length)
             const contract_account_bal_a = (await tokenStake.balances(_staker)).toNumber();
 
             // Calculate the Reward
-            const rewardAmount = Math.floor( approvedAmount_b.toNumber() * windowRewardAmount_b.toNumber() / (windowTotalStake_b - windowRewardAmount_b.toNumber()));
+            const rewardAmount = Math.floor( amount_b.toNumber() * windowRewardAmount_b.toNumber() / (windowTotalStake_b - windowRewardAmount_b.toNumber()));
 
-            const newStakeAmount = approvedAmount_b.toNumber() + rewardAmount;
-            const returnAmount = 0;//newStakeAmount -  _approvedAmount;    // There will be any return as full amount is Auto Renewed
+            const newStakeAmount = amount_b.toNumber() + rewardAmount;
+            const returnAmount = 0;//newStakeAmount -  _amount;    // There will be any return as full amount is Auto Renewed
 
             // Wallet should balance should increase
             assert.equal(wallet_bal_b, wallet_bal_a - returnAmount);
@@ -340,7 +340,7 @@ console.log("Number of Accounts - ", accounts.length)
             assert.equal(contract_bal_b, contract_bal_a + returnAmount);
 
             // Approved Amount should be increased
-            assert.equal(approvedAmount_a.toNumber(), approvedAmount_b.toNumber() + rewardAmount);
+            assert.equal(amount_a.toNumber(), amount_b.toNumber() + rewardAmount);
 
             // Staking Period Window Total Stake should not change
             assert.equal(windowTotalStake_a, windowTotalStake_b);
@@ -360,7 +360,7 @@ console.log("Number of Accounts - ", accounts.length)
 
             const contract_account_bal_b = (await tokenStake.balances(_account)).toNumber();
             
-            const {found: found_b, approvedAmount: approvedAmount_b, rewardComputeIndex: rewardComputeIndex_b}
+            const {found: found_b, amount: amount_b, rewardComputeIndex: rewardComputeIndex_b}
             = await tokenStake.getStakeInfo.call(_account);
             
             const {startPeriod: startPeriod_b, submissionEndPeriod: submissionEndPeriod_b, endPeriod: endPeriod_b, maxStake: maxStake_b, windowRewardAmount: windowRewardAmount_b, windowMaxAmount: windowMaxAmount_b}
@@ -369,7 +369,7 @@ console.log("Number of Accounts - ", accounts.length)
             // Withdraw the Stake
             await tokenStake.withdrawStake(existingStakeMapIndex, _stakeAmount, {from:_account});
             
-            const {found: found_a, approvedAmount: approvedAmount_a, rewardComputeIndex: rewardComputeIndex_a}
+            const {found: found_a, amount: amount_a, rewardComputeIndex: rewardComputeIndex_a}
             = await tokenStake.getStakeInfo.call(_account);
             
             const {startPeriod: startPeriod_a, submissionEndPeriod: submissionEndPeriod_a, endPeriod: endPeriod_a, maxStake: maxStake_a, windowRewardAmount: windowRewardAmount_a, windowMaxAmount: windowMaxAmount_a}
@@ -381,7 +381,7 @@ console.log("Number of Accounts - ", accounts.length)
             const contract_account_bal_a = (await tokenStake.balances(_account)).toNumber();
 
             // Stake Amount Should Reduce
-            assert.equal(approvedAmount_a.toNumber(), approvedAmount_b.toNumber() - _stakeAmount);
+            assert.equal(amount_a.toNumber(), amount_b.toNumber() - _stakeAmount);
 
             // Token Balance in the wallet should increase
             assert.equal(wallet_bal_a, wallet_bal_b + _stakeAmount);
@@ -453,7 +453,7 @@ console.log("Number of Accounts - ", accounts.length)
                         console.log("--------------------------- ",accounts[i]," -------------------------------------")
                         console.log("Staker - ", accounts[i]);
                         console.log("found - ", stakeData.found);
-                        console.log("approvedAmount - ", stakeData.approvedAmount.toNumber());
+                        console.log("amount - ", stakeData.amount.toNumber());
                         console.log("rewardComputeIndex - ", stakeData.rewardComputeIndex.toNumber());
                         console.log("balance - ",(await tokenStake.balances(accounts[i])).toNumber());
     
@@ -671,13 +671,12 @@ console.log("Number of Accounts - ", accounts.length)
 
         // Withdraw Full Stake in Submission Phase
         await withdrawStakeAndVerify(currentStakeMapIndex, stakeAmount_a5, accounts[5]);
-    
+
         // Re-Submit the Stake
         await submitStakeAndVerify(stakeAmount_a5, accounts[5]);
-        
-        // Submit more than the maxLimit allowed - Should Fail
-        await testErrorRevert(tokenStake.submitStake( stakeAmount_a5 + (max * 100000000), {from:accounts[5]}));
 
+        // Submit more than the maxLimit allowed - Should Fail
+        await testErrorRevert(tokenStake.submitStake( stakeAmount_a5 + (3 * max * 100000000), {from:accounts[5]}));
 
         await sleep(await waitTimeInSlot("OPEN_FOR_INCUBATION")); // Sleep to elapse the Submission time
 
@@ -693,7 +692,7 @@ console.log("Number of Accounts - ", accounts.length)
 
         // Reward again to the same account - Should Fail
         await testErrorRevert(computeAndAddRewardAndVerify(currentStakeMapIndex, accounts[5], accounts[9]));
-  
+
         // Claim the stake during the incubation phase - Should Fail
         await testErrorRevert(claimStakeAndVerify(currentStakeMapIndex, accounts[4]));
 
