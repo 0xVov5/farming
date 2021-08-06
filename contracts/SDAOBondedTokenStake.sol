@@ -25,6 +25,7 @@ contract SDAOBondedTokenStake is Ownable{
         uint256 maxStake;
 
         uint256 windowRewardAmount;
+        uint256 windowMaxAmount;
         
     }
 
@@ -83,11 +84,12 @@ contract SDAOBondedTokenStake is Ownable{
         uint256 stakerTotalStake;
         stakerTotalStake = stakeAmount.add(stakeHolderInfo[staker].approvedAmount);
 
-        // Check for Min Stake
+        // Check for Max Stake per Wallet and stake window max limit 
         require(
             stakeAmount > 0 && 
-            stakerTotalStake <= stakeMap[currentStakeMapIndex].maxStake,
-            "Need to have min stake"
+            stakerTotalStake <= stakeMap[currentStakeMapIndex].maxStake && 
+            windowTotalStake.add(stakeAmount) <= stakeMap[currentStakeMapIndex].windowMaxAmount,
+            "Exceeding max limits"
         );
         _;
 
@@ -136,7 +138,7 @@ contract SDAOBondedTokenStake is Ownable{
         
     }
 
-    function openForStake(uint256 _startPeriod, uint256 _submissionEndPeriod, uint256 _endPeriod, uint256 _windowRewardAmount, uint256 _maxStake) public onlyOperator {
+    function openForStake(uint256 _startPeriod, uint256 _submissionEndPeriod, uint256 _endPeriod, uint256 _windowRewardAmount, uint256 _maxStake, uint256 _windowMaxAmount) public onlyOperator {
 
         // Check Input Parameters
         require(_startPeriod >= now && _startPeriod < _submissionEndPeriod && _submissionEndPeriod < _endPeriod, "Invalid stake period");
@@ -155,6 +157,7 @@ contract SDAOBondedTokenStake is Ownable{
         stakePeriod.endPeriod = _endPeriod;
         stakePeriod.windowRewardAmount = _windowRewardAmount;
         stakePeriod.maxStake = _maxStake;
+        stakePeriod.windowMaxAmount = _windowMaxAmount;
 
         stakeMap[currentStakeMapIndex] = stakePeriod;
 

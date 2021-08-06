@@ -94,21 +94,21 @@ console.log("Number of Accounts - ", accounts.length)
         }
         
 
-        const openStakeAndVerify = async(_startPeriod, _endSubmission, _endPeriod, _rewardAmount, _maxStake, _account) => {
+        const openStakeAndVerify = async(_startPeriod, _endSubmission, _endPeriod, _rewardAmount, _maxStake, _windowMaxAmount, _account) => {
         
             const currentStakeMapIndex_b = (await tokenStake.currentStakeMapIndex.call()).toNumber();
 
             const windowTotalStake_b = (await tokenStake.windowTotalStake.call()).toNumber();
 
             // Open Stake for a Given Period
-            await tokenStake.openForStake(_startPeriod, _endSubmission, _endPeriod, _rewardAmount, _maxStake, {from:_account});
+            await tokenStake.openForStake(_startPeriod, _endSubmission, _endPeriod, _rewardAmount, _maxStake, _windowMaxAmount, {from:_account});
 
             const currentStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
 
             const {found: found_a, approvedAmount: approvedAmount_a, rewardComputeIndex: rewardComputeIndex_a}
             = await tokenStake.getStakeInfo.call("0x0000000000000000000000000000000000000000");
 
-            const {startPeriod: startPeriod_a, submissionEndPeriod: submissionEndPeriod_a, endPeriod: endPeriod_a, maxStake: maxStake_a, windowRewardAmount: windowRewardAmount_a}
+            const {startPeriod: startPeriod_a, submissionEndPeriod: submissionEndPeriod_a, endPeriod: endPeriod_a, maxStake: maxStake_a, windowRewardAmount: windowRewardAmount_a, windowMaxAmount: windowMaxAmount_a}
             = await tokenStake.stakeMap.call(currentStakeMapIndex);
 
             const windowTotalStake_a = (await tokenStake.windowTotalStake.call()).toNumber();
@@ -123,6 +123,7 @@ console.log("Number of Accounts - ", accounts.length)
             assert.equal(maxStake_a.toNumber(), _maxStake);
             assert.equal(windowTotalStake_a, windowTotalStake_b + _rewardAmount);
             assert.equal(windowRewardAmount_a.toNumber(), _rewardAmount);
+            assert.equal(windowMaxAmount_a.toNumber(), _windowMaxAmount);
 
         }
 
@@ -138,7 +139,7 @@ console.log("Number of Accounts - ", accounts.length)
             const {found: found_b, approvedAmount: approvedAmount_b, rewardComputeIndex: rewardComputeIndex_b}
             = await tokenStake.getStakeInfo.call(_account);
 
-            const {startPeriod: startPeriod_b, submissionEndPeriod: submissionEndPeriod_b, endPeriod: endPeriod_b, maxStake: maxStake_b, windowRewardAmount: windowRewardAmount_b}
+            const {startPeriod: startPeriod_b, submissionEndPeriod: submissionEndPeriod_b, endPeriod: endPeriod_b, maxStake: maxStake_b, windowRewardAmount: windowRewardAmount_b, windowMaxAmount: windowMaxAmount_b}
             = await tokenStake.stakeMap.call(currentStakeMapIndex);            
 
             const windowTotalStake_b = (await tokenStake.windowTotalStake.call()).toNumber();
@@ -149,7 +150,7 @@ console.log("Number of Accounts - ", accounts.length)
             const {found: found_a, approvedAmount: approvedAmount_a, rewardComputeIndex: rewardComputeIndex_a}
             = await tokenStake.getStakeInfo.call(_account);
 
-            const {startPeriod: startPeriod_a, submissionEndPeriod: submissionEndPeriod_a, endPeriod: endPeriod_a, maxStake: maxStake_a, windowRewardAmount: windowRewardAmount_a}
+            const {startPeriod: startPeriod_a, submissionEndPeriod: submissionEndPeriod_a, endPeriod: endPeriod_a, maxStake: maxStake_a, windowRewardAmount: windowRewardAmount_a, windowMaxAmount: windowMaxAmount_a}
             = await tokenStake.stakeMap.call(currentStakeMapIndex);
 
             const windowTotalStake_a = (await tokenStake.windowTotalStake.call()).toNumber();
@@ -191,7 +192,7 @@ console.log("Number of Accounts - ", accounts.length)
             const {found: found_b, approvedAmount: approvedAmount_b, rewardComputeIndex: rewardComputeIndex_b}
             = await tokenStake.getStakeInfo.call(_account);
 
-            const {startPeriod: startPeriod_b, submissionEndPeriod: submissionEndPeriod_b, endPeriod: endPeriod_b, maxStake: maxStake_b, windowRewardAmount: windowRewardAmount_b}
+            const {startPeriod: startPeriod_b, submissionEndPeriod: submissionEndPeriod_b, endPeriod: endPeriod_b, maxStake: maxStake_b, windowRewardAmount: windowRewardAmount_b, windowMaxAmount: windowMaxAmount_b}
             = await tokenStake.stakeMap.call(_stakeMapIndex); 
 
             const windowTotalStake_b = (await tokenStake.windowTotalStake.call()).toNumber();
@@ -313,7 +314,7 @@ console.log("Number of Accounts - ", accounts.length)
             const {found: found_b, approvedAmount: approvedAmount_b, rewardComputeIndex: rewardComputeIndex_b}
             = await tokenStake.getStakeInfo.call(_staker);
 
-            const {startPeriod: startPeriod_b, submissionEndPeriod: submissionEndPeriod_b, endPeriod: endPeriod_b, maxStake: maxStake_b, windowRewardAmount: windowRewardAmount_b}
+            const {startPeriod: startPeriod_b, submissionEndPeriod: submissionEndPeriod_b, endPeriod: endPeriod_b, maxStake: maxStake_b, windowRewardAmount: windowRewardAmount_b, windowMaxAmount: windowMaxAmount_b}
             = await tokenStake.stakeMap.call(currentStakeMapIndex);
 
             const windowTotalStake_b = (await tokenStake.windowTotalStake.call()).toNumber();
@@ -326,7 +327,7 @@ console.log("Number of Accounts - ", accounts.length)
             = await tokenStake.getStakeInfo.call(_staker);
 
             // Staking Window
-            const {startPeriod: startPeriod_a, submissionEndPeriod: submissionEndPeriod_a, endPeriod: endPeriod_a, maxStake: maxStake_a, windowRewardAmount: windowRewardAmount_a}
+            const {startPeriod: startPeriod_a, submissionEndPeriod: submissionEndPeriod_a, endPeriod: endPeriod_a, maxStake: maxStake_a, windowRewardAmount: windowRewardAmount_a, windowMaxAmount: windowMaxAmount_a}
             = await tokenStake.stakeMap.call(currentStakeMapIndex);
 
             const windowTotalStake_a = (await tokenStake.windowTotalStake.call()).toNumber();
@@ -372,7 +373,7 @@ console.log("Number of Accounts - ", accounts.length)
             const {found: found_b, approvedAmount: approvedAmount_b, rewardComputeIndex: rewardComputeIndex_b}
             = await tokenStake.getStakeInfo.call(_account);
             
-            const {startPeriod: startPeriod_b, submissionEndPeriod: submissionEndPeriod_b, endPeriod: endPeriod_b, maxStake: maxStake_b, windowRewardAmount: windowRewardAmount_b}
+            const {startPeriod: startPeriod_b, submissionEndPeriod: submissionEndPeriod_b, endPeriod: endPeriod_b, maxStake: maxStake_b, windowRewardAmount: windowRewardAmount_b, windowMaxAmount: windowMaxAmount_b}
             = await tokenStake.stakeMap.call(existingStakeMapIndex);            
             
             // Withdraw the Stake
@@ -381,7 +382,7 @@ console.log("Number of Accounts - ", accounts.length)
             const {found: found_a, approvedAmount: approvedAmount_a, rewardComputeIndex: rewardComputeIndex_a}
             = await tokenStake.getStakeInfo.call(_account);
             
-            const {startPeriod: startPeriod_a, submissionEndPeriod: submissionEndPeriod_a, endPeriod: endPeriod_a, maxStake: maxStake_a, windowRewardAmount: windowRewardAmount_a}
+            const {startPeriod: startPeriod_a, submissionEndPeriod: submissionEndPeriod_a, endPeriod: endPeriod_a, maxStake: maxStake_a, windowRewardAmount: windowRewardAmount_a, windowMaxAmount: windowMaxAmount_a}
             = await tokenStake.stakeMap.call(existingStakeMapIndex);
             
             const wallet_bal_a = (await token.balanceOf(_account)).toNumber();
@@ -407,7 +408,7 @@ console.log("Number of Accounts - ", accounts.length)
 
             const currentStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
 
-            const {startPeriod: startPeriod_b, submissionEndPeriod: submissionEndPeriod_b, endPeriod: endPeriod_b, maxStake: maxStake_b, windowRewardAmount: windowRewardAmount_b}
+            const {startPeriod: startPeriod_b, submissionEndPeriod: submissionEndPeriod_b, endPeriod: endPeriod_b, maxStake: maxStake_b, windowRewardAmount: windowRewardAmount_b, windowMaxAmount: windowMaxAmount_b}
             = await tokenStake.stakeMap.call(currentStakeMapIndex);
 
             const currentTimeStamp = Math.round(Date.now() / 1000);
@@ -608,18 +609,19 @@ console.log("Number of Accounts - ", accounts.length)
         const endPeriod = endSubmission + 60;
         const maxStake          = 110     * 100000000; // Max = 100 SDAO
         const rewardAmount      = 30    * 100000000; // Reward = 30 SDAO
+        const windowMaxAmount      = 500    * 100000000; // window max limit = 500 SDAO
 
         // Non Token Operator should allow to open for staking
-        await testErrorRevert(tokenStake.openForStake(startPeriod, endSubmission, endPeriod, rewardAmount, maxStake, {from:accounts[1]}));
+        await testErrorRevert(tokenStake.openForStake(startPeriod, endSubmission, endPeriod, rewardAmount, maxStake, windowMaxAmount, {from:accounts[1]}));
 
         // Improper Staking Period - Should Fail
-        await testErrorRevert(tokenStake.openForStake(startPeriod, endSubmission, endPeriod - 60, rewardAmount, maxStake, {from:accounts[9]}));
+        await testErrorRevert(tokenStake.openForStake(startPeriod, endSubmission, endPeriod - 60, rewardAmount, maxStake, windowMaxAmount, {from:accounts[9]}));
 
         // acocunts[9] is a Token Operator
-        await openStakeAndVerify(startPeriod, endSubmission, endPeriod, rewardAmount, maxStake, accounts[9]);
+        await openStakeAndVerify(startPeriod, endSubmission, endPeriod, rewardAmount, maxStake, windowMaxAmount, accounts[9]);
 
         // While Staking is in progress no addition open stake request should allow
-        await testErrorRevert(tokenStake.openForStake(startPeriod + 86400, endSubmission + 86400, endPeriod + 86400, rewardAmount, maxStake, {from:accounts[9]}));
+        await testErrorRevert(tokenStake.openForStake(startPeriod + 86400, endSubmission + 86400, endPeriod + 86400, rewardAmount, maxStake, windowMaxAmount, {from:accounts[9]}));
 
     });
 
@@ -750,9 +752,10 @@ console.log("Number of Accounts - ", accounts.length)
     //     const endPeriod = requestWithdrawStartPeriod + 20;
     //     const maxStake          = 110     * 100000000; // Max = 110 SDAO
     //     const rewardAmount      = 120   * 100000000; // Reward = 120 SDAO
+        // const windowMaxAmount      = 500    * 100000000; // window max limit = 500 SDAO
         
     //     // acocunts[9] is a Token Operator
-    //     await openStakeAndVerify(startPeriod, endSubmission, endPeriod, rewardAmount, maxStake, accounts[9]);
+    //     await openStakeAndVerify(startPeriod, endSubmission, endPeriod, rewardAmount, maxStake, windowMaxAmount, accounts[9]);
 
     //     const max = 300;
     //     const stakeAmount_a6 =  getRandomNumber(max) * 100000000;
@@ -818,9 +821,10 @@ console.log("Number of Accounts - ", accounts.length)
     //     const endPeriod = requestWithdrawStartPeriod + 20;
     //     const maxStake          = 110     * 100000000; // Max = 110 SDAO
     //     const rewardAmount      = 150   * 100000000; // Reward = 150 SDAO
+    // const windowMaxAmount      = 500    * 100000000; // window max limit = 500 SDAO
         
     //     // acocunts[9] is a Token Operator
-    //     await openStakeAndVerify(startPeriod, endSubmission, endPeriod, rewardAmount, maxStake, accounts[9]);
+    //     await openStakeAndVerify(startPeriod, endSubmission, endPeriod, rewardAmount, maxStake, windowMaxAmount, accounts[9]);
 
     //     // Get the current Stake Window Index
     //     const currentStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
