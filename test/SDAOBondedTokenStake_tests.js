@@ -83,16 +83,6 @@ console.log("Number of Accounts - ", accounts.length)
 
         }
         
-        const updateMaxDaysToOpenAndVeryfy = async(_maxNumOfDaysToOpen, _account) => {
-
-            await tokenStake.updateMaxDaysToOpen(_maxNumOfDaysToOpen, {from:_account});
-
-            // Get the Updated max Num Of Days To Open
-            const maxDaysToOpenInSecs = await tokenStake.maxDaysToOpenInSecs.call();
-            assert.equal(maxDaysToOpenInSecs, (_maxNumOfDaysToOpen * 24 * 60 * 60));
-
-        }
-        
 
         const openStakeAndVerify = async(_startPeriod, _endSubmission, _endPeriod, _rewardAmount, _maxStake, _windowMaxAmount, _account) => {
         
@@ -483,18 +473,18 @@ console.log("Number of Accounts - ", accounts.length)
 
 
         // Migrate multiple stakers from previous window
-        const migrateStakesAndVerify = async(existingStakeMapIndex, _stakers,_stakeAmounts, _account) => {
+        const airDropStakesAndVerify = async(existingStakeMapIndex, _stakers,_stakeAmounts, _account) => {
 
 
             const windowTotalStake_b = (await tokenStake.windowTotalStake.call()).toNumber();
 
-            // Add Past Stake Windows
-            await tokenStake.migrateStakes(existingStakeMapIndex, _stakers, _stakeAmounts, {from:_account});            
+            // Add Air Drop Stakes 
+            await tokenStake.airDropStakes(existingStakeMapIndex, _stakers, _stakeAmounts, {from:_account});            
 
 
             const windowTotalStake_a = (await tokenStake.windowTotalStake.call()).toNumber();
 
-            // All the stakers balance to be same as migrated stakeAmount
+            // All the stakers balance to be same as air dropped stakeAmount
             let stakersBalInContract = [];
             let totalStakeMigrated = 0;
             for(var i=0; i<_stakers.length;i++) {
@@ -505,7 +495,7 @@ console.log("Number of Accounts - ", accounts.length)
             }
             assert.deepStrictEqual(_stakeAmounts, stakersBalInContract);
 
-            // Window Total Stake Amount should be with the total amount migrated
+            // Window Total Stake Amount should be with the total amount air dropped stake
             assert.equal(windowTotalStake_a, windowTotalStake_b + totalStakeMigrated);
 
         }
@@ -555,46 +545,69 @@ console.log("Number of Accounts - ", accounts.length)
 
     });
 
-    // it("2.1 AirDrop Auto Stakes", async function() 
-    // {
+    it("2.1 AirDrop Auto Stakes", async function() 
+    {
 
-    //     // Sample Past Stake window - Which is in running state
-    //     // Get the start Period in Epoc Timestamp (In Secs)
-    //     const baseTime = Math.round(Date.now() / 1000);
-    //     const startPeriod = baseTime - 100;
-    //     const endSubmission = startPeriod + 80;
-    //     const endPeriod = endSubmission + 80;
-    //     const maxStake          = 100     * 100000000; // Max = 100 SDAO
-    //     const rewardAmount      = 30    * 100000000; // Reward = 30 SDAO
+        // Sample Past Stake window - Which is in running state
+        // Get the start Period in Epoc Timestamp (In Secs)
+        const baseTime = Math.round(Date.now() / 1000);
+        const startPeriod = baseTime + 10;
+        const endSubmission = startPeriod + 30;
+        const endPeriod = endSubmission + 60;
+        const maxStake          = 100     * 100000000; // Max = 100 SDAO
+        const rewardAmount      = 30    * 100000000; // Reward = 30 SDAO
+        const windowMaxAmount      = 900    * 100000000; // window max limit = 900 SDAO
 
-    //     // acocunts[9] is a Token Operator
-    //     await migrateStakeWindowAndVerify(startPeriod, endSubmission, endPeriod, rewardAmount, maxStake, accounts[9]);
+        // acocunts[9] is a Token Operator
+        // Open a new Stake
+        await openStakeAndVerify(startPeriod, endSubmission, endPeriod, rewardAmount, maxStake, windowMaxAmount, accounts[9]);
 
-    //     // Simulating the migration stakes for accounts - 1,2,3,4,5 which include reward as well
-    //     const stakeAmount_a1 =  35 * 100000000;
-    //     const stakeAmount_a2 =  50 * 100000000;
-    //     const stakeAmount_a3 =  90 * 100000000;
-    //     const stakeAmount_a4 =  110 * 100000000;
-    //     const stakeAmount_a5 =  80 * 100000000;
+        // Simulating the air drop stakes for accounts - 1,2,3,4,5
+        const stakeAmount_a1 =  35 * 100000000;
+        const stakeAmount_a2 =  50 * 100000000;
+        const stakeAmount_a3 =  90 * 100000000;
+        const stakeAmount_a4 =  110 * 100000000;
+        const stakeAmount_a5 =  80 * 100000000;
 
-    //     const totalStakeMigrated = 365 * 100000000;
+        const totalStakeAirDroped = 365 * 100000000;
 
-    //     const stakersToMigrate = [accounts[1], accounts[2], accounts[3], accounts[4], accounts[5]]
-    //     const stakeAmountToMigrate = [stakeAmount_a1, stakeAmount_a2, stakeAmount_a3, stakeAmount_a4, stakeAmount_a5 ]
+        const stakersToAirDrop = [accounts[1], accounts[2], accounts[3], accounts[4], accounts[5]]
+        const stakeAmountToAirDrop = [stakeAmount_a1, stakeAmount_a2, stakeAmount_a3, stakeAmount_a4, stakeAmount_a5 ]
 
-    //     // Migrate Stakes
-    //     const currentStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
-    //     await migrateStakesAndVerify(currentStakeMapIndex, stakersToMigrate, stakeAmountToMigrate, accounts[9]);
+        // Migrate Stakes
+        const currentStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
+        await airDropStakesAndVerify(currentStakeMapIndex, stakersToAirDrop, stakeAmountToAirDrop, accounts[9]);
 
-    //     // Deposit the reward amount to the contract
-    //     await depositTokenAndVerify(totalStakeMigrated , accounts[9]);
+        // Deposit the reward amount to the contract
+        await depositTokenAndVerify(totalStakeAirDroped , accounts[9]);
+        await depositTokenAndVerify(rewardAmount , accounts[9]);
 
 
-    //     // Make sure that the window is closed for the sub sequent test to follow varios scenarios
-    //     // End Stake Period
-    //     await sleep(await waitTimeInSlot("END_STAKE")); // Sleep to elapse the Stake Period
+        // Add the rewards for this stake window
+        await sleep(await waitTimeInSlot("OPEN_FOR_INCUBATION")); // Sleep to elapse the Submission time
 
-    // });
+        // await computeAndAddRewardAndVerify(currentStakeMapIndex, accounts[1], accounts[9]);
+        // await computeAndAddRewardAndVerify(currentStakeMapIndex, accounts[2], accounts[9]);
+        // await computeAndAddRewardAndVerify(currentStakeMapIndex, accounts[3], accounts[9]);
+        // await computeAndAddRewardAndVerify(currentStakeMapIndex, accounts[4], accounts[9]);
+        // await computeAndAddRewardAndVerify(currentStakeMapIndex, accounts[5], accounts[9]);
+
+        // Execute all the Rewards in one shot
+        const stakers = [accounts[1], accounts[2], accounts[3], accounts[4], accounts[5]];
+        await tokenStake.updateRewards(currentStakeMapIndex, stakers, {from:accounts[9]});
+
+        // Make sure that the window is closed for the sub sequent test to follow various scenarios
+        // End Stake Period
+        await sleep(await waitTimeInSlot("END_STAKE")); // Sleep to elapse the Stake Period
+
+        // Claim all the Stakes after the end Period
+        await claimStakeAndVerify(currentStakeMapIndex, accounts[1]);
+        await claimStakeAndVerify(currentStakeMapIndex, accounts[2]);
+        await claimStakeAndVerify(currentStakeMapIndex, accounts[3]);
+        await claimStakeAndVerify(currentStakeMapIndex, accounts[4]);
+        await claimStakeAndVerify(currentStakeMapIndex, accounts[5]);
+
+    });
 
     it("3. Stake Operations - Open Stake", async function() 
     {
@@ -607,9 +620,9 @@ console.log("Number of Accounts - ", accounts.length)
         const startPeriod = baseTime + 10;
         const endSubmission = startPeriod + 30;
         const endPeriod = endSubmission + 60;
-        const maxStake          = 110     * 100000000; // Max = 100 SDAO
+        const maxStake          = 210     * 100000000; // Max = 100 SDAO
         const rewardAmount      = 30    * 100000000; // Reward = 30 SDAO
-        const windowMaxAmount      = 500    * 100000000; // window max limit = 500 SDAO
+        const windowMaxAmount      = 900    * 100000000; // window max limit = 900 SDAO
 
         // Non Token Operator should allow to open for staking
         await testErrorRevert(tokenStake.openForStake(startPeriod, endSubmission, endPeriod, rewardAmount, maxStake, windowMaxAmount, {from:accounts[1]}));
@@ -704,7 +717,7 @@ console.log("Number of Accounts - ", accounts.length)
         // Deposit the tokens to pool
         await depositTokenAndVerify(rewardAmount , accounts[9]);
 
-        // Account - 5 will be used for testing Renewal Operation
+        // Account - 5 will be used for auto roll over
         await claimStakeAndVerify(currentStakeMapIndex, accounts[1]);
         await claimStakeAndVerify(currentStakeMapIndex, accounts[2]);
         await claimStakeAndVerify(currentStakeMapIndex, accounts[3]);
@@ -737,164 +750,76 @@ console.log("Number of Accounts - ", accounts.length)
         
     });
 
-    // it("7. Stake Operations - New Staking Period, Reward & AutoRenewal Stake", async function() 
-    // {
+    it("7. Stake Operations - New Staking Period with Auto Roll Over and New Stakes ", async function() 
+    {
 
-    //     // Always the stake window starts with 1 not with Zero
-    //     const existingStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
+        // Always the stake window starts with 1 not with Zero
+        const existingStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
 
-    //     // Get the start Period in Epoc Timestamp (In Secs)
-    //     const baseTime = Math.round(Date.now() / 1000);
-    //     const startPeriod = baseTime + 10;
-    //     const endSubmission = startPeriod + 30;
-    //     const endApproval = endSubmission + 20;
-    //     const requestWithdrawStartPeriod = endApproval + 20 
-    //     const endPeriod = requestWithdrawStartPeriod + 20;
-    //     const maxStake          = 110     * 100000000; // Max = 110 SDAO
-    //     const rewardAmount      = 120   * 100000000; // Reward = 120 SDAO
-        // const windowMaxAmount      = 500    * 100000000; // window max limit = 500 SDAO
+        // Get the start Period in Epoc Timestamp (In Secs)
+        const baseTime = Math.round(Date.now() / 1000);
+        const startPeriod = baseTime + 10;
+        const endSubmission = startPeriod + 30;
+        const endApproval = endSubmission + 20;
+        const requestWithdrawStartPeriod = endApproval + 20 
+        const endPeriod = requestWithdrawStartPeriod + 20;
+        const maxStake          = 210     * 100000000; // Max = 110 SDAO
+        const rewardAmount      = 120   * 100000000; // Reward = 120 SDAO
+        const windowMaxAmount      = 600    * 100000000; // window max limit = 500 SDAO
         
-    //     // acocunts[9] is a Token Operator
-    //     await openStakeAndVerify(startPeriod, endSubmission, endPeriod, rewardAmount, maxStake, windowMaxAmount, accounts[9]);
+        // acocunts[9] is a Token Operator
+        await openStakeAndVerify(startPeriod, endSubmission, endPeriod, rewardAmount, maxStake, windowMaxAmount, accounts[9]);
 
-    //     const max = 300;
-    //     const stakeAmount_a6 =  getRandomNumber(max) * 100000000;
-    //     const stakeAmount_a7 =  getRandomNumber(max) * 100000000;
-    //     const autoRenewalYes = true;
-    //     const autoRenewalNo = false;
+        const max = 200;
+        const stakeAmount_a6 =  getRandomNumber(max) * 100000000;
+        const stakeAmount_a7 =  getRandomNumber(max) * 100000000;
 
-    //     await sleep(await waitTimeInSlot("OPEN_FOR_SUBMISSION")); // Sleep to start the submissions
+        await sleep(await waitTimeInSlot("OPEN_FOR_SUBMISSION")); // Sleep to start the submissions
 
-    //     // Submit Stake
-    //     await submitStakeAndVerify(stakeAmount_a6, autoRenewalYes, accounts[6]);
-    //     await submitStakeAndVerify(stakeAmount_a7, autoRenewalYes, accounts[7]);
+        // Submit Stake - New Submissions for this Stake Window
+        await submitStakeAndVerify(stakeAmount_a6, accounts[6]);
+        await submitStakeAndVerify(stakeAmount_a7, accounts[7]);
 
-    //     // await sleep(await waitTimeInSlot("OPEN_FOR_APPROVAL")); // Sleep to elapse the Submission time
-    //     // Placeholder in case if any reject stake to be executed
+        // Get the current Stake Window Index
+        const currentStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
 
-    //     // Get the current Stake Window Index
-    //     const currentStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
+        await sleep(await waitTimeInSlot("OPEN_FOR_INCUBATION")); // Sleep to start the reward
 
-    //     await sleep(await waitTimeInSlot("OPEN_REWARD_AUTO_RENEW")); // Sleep to start the reward & renewal
+        // Can be performed only by Token Operator -- Should Fail
+        await testErrorRevert(tokenStake.computeAndAddReward(currentStakeMapIndex, accounts[5], {from:accounts[5]}));
 
-    //     // Auto Renew Stake 
-    //     // Can be performed only by Token Operator -- Should Fail
-    //     await testErrorRevert(tokenStake.computeAndAddReward(currentStakeMapIndex, accounts[5], {from:accounts[5]}));
+        // Can be performed only by Token Operator -- Account - 9
+        await computeAndAddRewardAndVerify(currentStakeMapIndex, accounts[5], accounts[9]);
+        await computeAndAddRewardAndVerify(currentStakeMapIndex, accounts[6], accounts[9]);
+        await computeAndAddRewardAndVerify(currentStakeMapIndex, accounts[7], accounts[9]);
 
-    //     // Can be performed only by Token Operator -- Account - 9
-    //     await computeAndAddRewardAndVerify(currentStakeMapIndex, accounts[5], accounts[9]);
-    //     await computeAndAddRewardAndVerify(currentStakeMapIndex, accounts[6], accounts[9]);
-    //     await computeAndAddRewardAndVerify(currentStakeMapIndex, accounts[7], accounts[9]);
+        // End Stake Period
+        await sleep(await waitTimeInSlot("END_STAKE")); // Sleep to elapse the Stake Period
 
-    //     await sleep(await waitTimeInSlot("OPEN_OPT_UPDATE")); // Sleep to get request for Withdrawal
-    
-    //     // request For Claim
-    //     const autoRenew = false;
-    //     await requestForClaimAndVerify(currentStakeMapIndex, autoRenew, accounts[6]);
+        // Deposit the tokens to pool - to make sure enough token are there for withdrawal
+        await depositTokenAndVerify(rewardAmount , accounts[9]);
 
-    //     // End Stake Period
-    //     await sleep(await waitTimeInSlot("END_STAKE")); // Sleep to elapse the Stake Period
+        // Accounts 6 Claiming the Stake
+        // Account - 5, 7 is for Auto Roll Over
+        await claimStakeAndVerify(currentStakeMapIndex, accounts[6]);
 
-    //     // Deposit the tokens to pool - to make sure enough token are there for withdrawal
-    //     await depositTokenAndVerify(rewardAmount , accounts[9]);
+        // Should fail if we try to claim again
+        await testErrorRevert(tokenStake.claimStake(currentStakeMapIndex, {from:accounts[6]}));
 
-    //     // Accounts 6,7, 5 are approved - Account 6 are eligible for withdrawing stake & 7 for Auto Renewal
-    //     // Account - 5 is from Renewal Operation
-    //     await claimStakeAndVerify(currentStakeMapIndex, accounts[6]);
+    });
 
-    //     // Should fail if we try to claim again
-    //     await testErrorRevert(tokenStake.claimStake(currentStakeMapIndex, {from:accounts[6]}));
+    it("8. Stake Operations - No more active Stakes Withdrawals", async function() 
+    {
 
-    // });
+        // Staker should be able to withdraw the tokens when there is no active stake - means passing the grace period
+        const currentStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
 
+        // Account 5 & 7 is in Auto Roll Over
+        await claimStakeAndVerify(currentStakeMapIndex, accounts[5]);
+        await claimStakeAndVerify(currentStakeMapIndex, accounts[7]);
 
-    // it("8. Stake Operations - New Stake For Auto Renewals", async function() {
+        //await displayCurrentStateOfContract();
 
-    //     const existingStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
-
-    //     // Get the start Period in Epoc Timestamp (In Secs)
-    //     const baseTime = Math.round(Date.now() / 1000);
-    //     const startPeriod = baseTime + 10;
-    //     const endSubmission = startPeriod + 30;
-    //     const endApproval = endSubmission + 20;
-    //     const requestWithdrawStartPeriod = endApproval + 20 
-    //     const endPeriod = requestWithdrawStartPeriod + 20;
-    //     const maxStake          = 110     * 100000000; // Max = 110 SDAO
-    //     const rewardAmount      = 150   * 100000000; // Reward = 150 SDAO
-    // const windowMaxAmount      = 500    * 100000000; // window max limit = 500 SDAO
-        
-    //     // acocunts[9] is a Token Operator
-    //     await openStakeAndVerify(startPeriod, endSubmission, endPeriod, rewardAmount, maxStake, windowMaxAmount, accounts[9]);
-
-    //     // Get the current Stake Window Index
-    //     const currentStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
-        
-    //     const {found: found_eb, approvedAmount: approvedAmount_eb, rewardComputeIndex: rewardComputeIndex_eb}
-    //     = await tokenStake.getStakeInfo.call(accounts[5]);
-
-    //     const max = 100;
-    //     const stakeAmount_a5 =  getRandomNumber(max) * 100000000;
-    //     const stakeAmount_a7 =  getRandomNumber(max) * 100000000;
-    //     const stakeAmount_a8 =  getRandomNumber(max) * 100000000;
-    //     const autoRenewalYes = true;
-    //     const autoRenewalNo = false;
-
-    //     await sleep(await waitTimeInSlot("OPEN_FOR_SUBMISSION")); // Sleep to start the submissions
-
-    //     // Additional Staking from the Same Staker 5 & 7
-    //     await submitStakeAndVerify(stakeAmount_a5, autoRenewalYes, accounts[5]);
-    //     await submitStakeAndVerify(stakeAmount_a7, autoRenewalYes, accounts[7]);
-    //     // New staker 8
-    //     await submitStakeAndVerify(stakeAmount_a8, autoRenewalYes, accounts[8]);
-
-    //     // await sleep(await waitTimeInSlot("OPEN_FOR_APPROVAL")); // Sleep to elapse the Submission time
-    //     // Placeholder in case if any reject stake to be executed
-
-    //     await sleep(await waitTimeInSlot("OPEN_REWARD_AUTO_RENEW")); // Sleep to start the reward & renewal
-
-    //     // Auto Renew Stake 
-    //     // Can be performed only by Token Operator -- Should Fail
-    //     await testErrorRevert(tokenStake.computeAndAddReward(currentStakeMapIndex, accounts[5], {from:accounts[5]}));
-
-    //     // Can be performed only by Token Operator -- Account - 9
-    //     //await computeAndAddRewardAndVerify(currentStakeMapIndex, accounts[5], accounts[9]);
-    //     //await computeAndAddRewardAndVerify(currentStakeMapIndex, accounts[7], accounts[9]);
-    //     //await computeAndAddRewardAndVerify(currentStakeMapIndex, accounts[8], accounts[9]);
-
-    //     // Execute all the Rewards in one shot
-    //     const stakers = [accounts[5], accounts[7], accounts[8]];
-    //     await tokenStake.updateRewards(currentStakeMapIndex, stakers, {from:accounts[9]});
-
-    //     await sleep(await waitTimeInSlot("OPEN_OPT_UPDATE")); // Sleep to get request for Withdrawal
-
-    //     // request For Claim
-    //     await requestForClaimAndVerify(currentStakeMapIndex, autoRenewalNo, accounts[8]);
-
-    //     // End Stake Period
-    //     await sleep(await waitTimeInSlot("END_STAKE")); // Sleep to elapse the Stake Period
-
-    //     // Deposit the tokens to pool - to make sure enough token are there for withdrawal
-    //     await depositTokenAndVerify(rewardAmount , accounts[9]);
-
-    //     // Claim by Account-8 as Opted out from Auto Renewal
-    //     await claimStakeAndVerify(currentStakeMapIndex, accounts[8]);
-
-    // });
-
-    // it("9. Stake Operations - No more active Stakes Withdrawals", async function() 
-    // {
-
-    //     // Staker should be able to withdraw the tokens when there is no active stake - means passing the grace period
-    //     const currentStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
-
-    //     await sleep(await waitTimeInSlot("CLAIM_GRACE_PERIOD")); // Sleep to elapse the Grace time
-
-    //     // Account 5 & 7 is enabled for AutoRenew
-    //     await claimStakeAndVerify(currentStakeMapIndex, accounts[5]);
-    //     await claimStakeAndVerify(currentStakeMapIndex, accounts[7]);
-
-    //     //await displayCurrentStateOfContract();        
-
-    // });
+    });
 
 });

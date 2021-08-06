@@ -355,7 +355,7 @@ contract SDAOBondedTokenStake is Ownable{
             // Create a stake request with approvedAmount
             req.exist = true;
             req.approvedAmount = stakeAmount[indx];
-            req.rewardComputeIndex = stakeMapIndex;
+            req.rewardComputeIndex = 0;
 
             // Add to the Stake Holders List
             stakeHolderInfo[staker[indx]] = req;
