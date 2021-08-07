@@ -96,7 +96,7 @@ contract SDAOBondedTokenStake is Ownable{
     }
 
     // Check for claim - Stake Window should be either in submission phase or after end period
-    modifier allowClaimStake(uint256 stakeMapIndex) {
+    modifier allowClaimStake() {
 
         require(
           (now >= stakeMap[currentStakeMapIndex].startPeriod && now <= stakeMap[currentStakeMapIndex].submissionEndPeriod && stakeHolderInfo[msg.sender].amount > 0) || 
@@ -217,7 +217,7 @@ contract SDAOBondedTokenStake is Ownable{
 
 
     // To withdraw stake during submission phase
-    function withdrawStake(uint256 stakeMapIndex, uint256 stakeAmount) public allowClaimStake(stakeMapIndex) {
+    function withdrawStake(uint256 stakeAmount) public allowClaimStake {
 
         //require(
         //    (now >= stakeMap[stakeMapIndex].startPeriod && now <= stakeMap[stakeMapIndex].submissionEndPeriod),
@@ -241,11 +241,11 @@ contract SDAOBondedTokenStake is Ownable{
         // Return to User Wallet
         require(token.transfer(msg.sender, stakeAmount), "Unable to transfer token to the account");
 
-        emit WithdrawStake(stakeMapIndex, msg.sender, stakeAmount);
+        emit WithdrawStake(currentStakeMapIndex, msg.sender, stakeAmount);
     }
 
     // To claim from the stake window
-    function claimStake(uint256 stakeMapIndex) public allowClaimStake(stakeMapIndex) {
+    function claimStake() public allowClaimStake {
 
         StakeInfo storage stakeInfo = stakeHolderInfo[msg.sender];
 
@@ -267,7 +267,7 @@ contract SDAOBondedTokenStake is Ownable{
         // Call the transfer function
         require(token.transfer(msg.sender, stakeAmount), "Unable to transfer token back to the account");
 
-        emit ClaimStake(stakeMapIndex, msg.sender, stakeAmount);
+        emit ClaimStake(currentStakeMapIndex, msg.sender, stakeAmount);
 
     }
 

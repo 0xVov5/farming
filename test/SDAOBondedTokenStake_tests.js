@@ -188,7 +188,8 @@ console.log("Number of Accounts - ", accounts.length)
             const windowTotalStake_b = (await tokenStake.windowTotalStake.call()).toNumber();
 
             // Call Withdraw Stake
-            await tokenStake.claimStake(_stakeMapIndex, {from:_account});
+            //await tokenStake.claimStake(_stakeMapIndex, {from:_account});
+            await tokenStake.claimStake({from:_account});
 
             const {found: found_a, amount: amount_a, rewardComputeIndex: rewardComputeIndex_a}
             = await tokenStake.getStakeInfo.call(_account);
@@ -367,7 +368,8 @@ console.log("Number of Accounts - ", accounts.length)
             = await tokenStake.stakeMap.call(existingStakeMapIndex);            
             
             // Withdraw the Stake
-            await tokenStake.withdrawStake(existingStakeMapIndex, _stakeAmount, {from:_account});
+            //await tokenStake.withdrawStake(existingStakeMapIndex, _stakeAmount, {from:_account});
+            await tokenStake.withdrawStake(_stakeAmount, {from:_account});
             
             const {found: found_a, amount: amount_a, rewardComputeIndex: rewardComputeIndex_a}
             = await tokenStake.getStakeInfo.call(_account);
@@ -667,7 +669,8 @@ console.log("Number of Accounts - ", accounts.length)
         await withdrawStakeAndVerify(currentStakeMapIndex, 5 * 100000000, accounts[3]);
 
         // Withdraw the Stake more than staked - Should Fail
-        await testErrorRevert(tokenStake.withdrawStake(currentStakeMapIndex, stakeAmount_a5 + 10000000, {from:accounts[5]}));
+        //await testErrorRevert(tokenStake.withdrawStake(currentStakeMapIndex, stakeAmount_a5 + 10000000, {from:accounts[5]}));
+        await testErrorRevert(tokenStake.withdrawStake(stakeAmount_a5 + 10000000, {from:accounts[5]}));
 
         // Withdraw Full Stake in Submission Phase
         await withdrawStakeAndVerify(currentStakeMapIndex, stakeAmount_a5, accounts[5]);
@@ -723,7 +726,8 @@ console.log("Number of Accounts - ", accounts.length)
         await claimStakeAndVerify(currentStakeMapIndex, accounts[4]);
         
         // Try withdraw the token again - Should Fail
-        await testErrorRevert(tokenStake.claimStake(currentStakeMapIndex, {from:accounts[3]}));
+        //await testErrorRevert(tokenStake.claimStake(currentStakeMapIndex, {from:accounts[3]}));
+        await testErrorRevert(tokenStake.claimStake({from:accounts[3]}));
 
     });
 
@@ -803,7 +807,8 @@ console.log("Number of Accounts - ", accounts.length)
         await claimStakeAndVerify(currentStakeMapIndex, accounts[6]);
 
         // Should fail if we try to claim again
-        await testErrorRevert(tokenStake.claimStake(currentStakeMapIndex, {from:accounts[6]}));
+        //await testErrorRevert(tokenStake.claimStake(currentStakeMapIndex, {from:accounts[6]}));
+        await testErrorRevert(tokenStake.claimStake({from:accounts[6]}));
 
     });
 
