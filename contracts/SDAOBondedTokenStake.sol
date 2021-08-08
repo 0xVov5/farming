@@ -8,12 +8,14 @@ contract SDAOBondedTokenStake is Ownable{
 
     using SafeMath for uint256;
 
-    ERC20 public token; // Address of token contract
+    ERC20 public token; // Address of token contract and same used for rewards
+    ERC20 public bonusToken; // Address of bonus token contract
 
     struct StakeInfo {
         bool exist;
         uint256 amount;
         uint256 rewardComputeIndex;
+        uint256 bonusAmount;
     }
 
     // Staking period timestamp (Debatable on timestamp vs blocknumber - went with timestamp)
@@ -55,8 +57,8 @@ contract SDAOBondedTokenStake is Ownable{
 
     event OpenForStake(uint256 indexed stakeIndex, address indexed tokenOperator, uint256 startPeriod, uint256 endPeriod, uint256 rewardAmount);
     event SubmitStake(uint256 indexed stakeIndex, address indexed staker, uint256 stakeAmount);
-    event WithdrawStake(uint256 indexed stakeIndex, address indexed staker, uint256 stakeAmount);
-    event ClaimStake(uint256 indexed stakeIndex, address indexed staker, uint256 totalAmount);
+    event WithdrawStake(uint256 indexed stakeIndex, address indexed staker, uint256 stakeAmount, uint256 bonusAmount);
+    event ClaimStake(uint256 indexed stakeIndex, address indexed staker, uint256 totalAmount, uint256 bonusAmount);
     event AddReward(address indexed staker, uint256 indexed stakeIndex, address tokenOperator, uint256 stakeAmount, uint256 rewardAmount, uint256 windowTotalStake);
 
 
@@ -133,6 +135,12 @@ contract SDAOBondedTokenStake is Ownable{
 
         emit WithdrawToken(tokenOperator, value);
         
+    }
+
+    // To set the bonus token for future needs
+    function setBonusToken(address _bonusToken) public onlyOwner {
+        require(_bonusToken != address(0), "Invalid bonus token");
+        bonusToken = ERC20(_bonusToken);
     }
 
     function openForStake(uint256 _startPeriod, uint256 _submissionEndPeriod, uint256 _endPeriod, uint256 _windowRewardAmount, uint256 _maxStake, uint256 _windowMaxAmount) public onlyOperator {
@@ -229,8 +237,12 @@ contract SDAOBondedTokenStake is Ownable{
         // Validate the input Stake Amount
         require(stakeAmount > 0 && stakeInfo.amount >= stakeAmount, "Cannot withdraw beyond stake amount");
 
+        uint256 bonusAmount;
+
         // Update the staker balance in the staking window
         stakeInfo.amount = stakeInfo.amount.sub(stakeAmount);
+        bonusAmount = stakeInfo.bonusAmount;
+        stakeInfo.bonusAmount = 0;
 
         // Update the User balance
         balances[msg.sender] = balances[msg.sender].sub(stakeAmount);
@@ -241,7 +253,12 @@ contract SDAOBondedTokenStake is Ownable{
         // Return to User Wallet
         require(token.transfer(msg.sender, stakeAmount), "Unable to transfer token to the account");
 
-        emit WithdrawStake(currentStakeMapIndex, msg.sender, stakeAmount);
+        // Call the bonus transfer function - Should transfer only if set 
+        if(address(bonusToken) != address(0) && bonusAmount > 0) {
+            require(bonusToken.transfer(msg.sender, bonusAmount), "Unable to transfer bonus token to the account");
+        }
+
+        emit WithdrawStake(currentStakeMapIndex, msg.sender, stakeAmount, bonusAmount);
     }
 
     // To claim from the stake window
@@ -250,10 +267,13 @@ contract SDAOBondedTokenStake is Ownable{
         StakeInfo storage stakeInfo = stakeHolderInfo[msg.sender];
 
         uint256 stakeAmount;
+        uint256 bonusAmount;
 
         // No more stake windows or in submission phase
         stakeAmount = stakeInfo.amount;
+        bonusAmount = stakeInfo.bonusAmount;
         stakeInfo.amount = 0;
+        stakeInfo.bonusAmount = 0;
 
         // Update current stake period total stake
         windowTotalStake = windowTotalStake.sub(stakeAmount);
@@ -267,7 +287,12 @@ contract SDAOBondedTokenStake is Ownable{
         // Call the transfer function
         require(token.transfer(msg.sender, stakeAmount), "Unable to transfer token back to the account");
 
-        emit ClaimStake(currentStakeMapIndex, msg.sender, stakeAmount);
+        // Call the bonus transfer function - Should transfer only if set 
+        if(address(bonusToken) != address(0) && bonusAmount > 0) {
+            require(bonusToken.transfer(msg.sender, bonusAmount), "Unable to transfer bonus token to the account");
+        }
+        
+        emit ClaimStake(currentStakeMapIndex, msg.sender, stakeAmount, bonusAmount);
 
     }
 
@@ -281,7 +306,7 @@ contract SDAOBondedTokenStake is Ownable{
 
 
     // Update reward for staker in the respective stake window
-    function computeAndAddReward(uint256 stakeMapIndex, address staker) 
+    function computeAndAddReward(uint256 stakeMapIndex, address staker, uint256 stakeBonusAmount) 
     public 
     onlyOperator
     returns(bool)
@@ -311,6 +336,9 @@ contract SDAOBondedTokenStake is Ownable{
         // Add the reward amount
         stakeInfo.amount = totalAmount;
 
+        // Add the bonus Amount
+        stakeInfo.bonusAmount = stakeInfo.bonusAmount.add(stakeBonusAmount);
+
         // Update the reward compute index to avoid mulitple addition
         stakeInfo.rewardComputeIndex = stakeMapIndex;
 
@@ -322,12 +350,12 @@ contract SDAOBondedTokenStake is Ownable{
         return true;
     }
 
-    function updateRewards(uint256 stakeMapIndex, address[] calldata staker) 
+    function updateRewards(uint256 stakeMapIndex, address[] calldata staker, uint256 stakeBonusAmount) 
     external 
     onlyOperator
     {
         for(uint256 indx = 0; indx < staker.length; indx++) {
-            require(computeAndAddReward(stakeMapIndex, staker[indx]));
+            require(computeAndAddReward(stakeMapIndex, staker[indx], stakeBonusAmount));
         }
     }
 
@@ -377,7 +405,7 @@ contract SDAOBondedTokenStake is Ownable{
     function getStakeInfo(address staker) 
     public 
     view
-    returns (bool found, uint256 amount, uint256 rewardComputeIndex) 
+    returns (bool found, uint256 amount, uint256 rewardComputeIndex, uint256 bonusAmount) 
     {
 
         StakeInfo memory stakeInfo = stakeHolderInfo[staker];
@@ -389,6 +417,7 @@ contract SDAOBondedTokenStake is Ownable{
 
         amount = stakeInfo.amount;
         rewardComputeIndex = stakeInfo.rewardComputeIndex;
+        bonusAmount = stakeInfo.bonusAmount;
 
     }
 
