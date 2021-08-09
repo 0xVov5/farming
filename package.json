@@ -29,6 +29,7 @@
     "@truffle/contract": "^4.2.23",
     "@truffle/hdwallet-provider": "^1.1.0",
     "bignumber.js": "^9.0.1",
+    "singularitydao-token-contracts": "^1.0.0",
     "truffle": "5.4.2"
   },
   "devDependencies": {
