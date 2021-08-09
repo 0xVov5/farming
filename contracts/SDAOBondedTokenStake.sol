@@ -147,7 +147,7 @@ contract SDAOBondedTokenStake is Ownable{
 
         // Check Input Parameters
         require(_startPeriod >= now && _startPeriod < _submissionEndPeriod && _submissionEndPeriod < _endPeriod, "Invalid stake period");
-        require(_windowRewardAmount > 0 && _maxStake > 0, "Invalid inputs" );
+        require(_windowRewardAmount > 0 && _maxStake > 0 && _windowMaxAmount > 0, "Invalid inputs" );
 
         // Check Stake in Progress
         require(currentStakeMapIndex == 0 || (now > stakeMap[currentStakeMapIndex].submissionEndPeriod && _startPeriod >= stakeMap[currentStakeMapIndex].endPeriod), "Cannot have more than one stake request at a time");
@@ -300,7 +300,10 @@ contract SDAOBondedTokenStake is Ownable{
     function _calculateRewardAmount(uint256 stakeMapIndex, uint256 stakeAmount) internal view returns(uint256) {
 
         uint256 calcRewardAmount;
-        calcRewardAmount = stakeAmount.mul(stakeMap[stakeMapIndex].windowRewardAmount).div(windowTotalStake.sub(stakeMap[stakeMapIndex].windowRewardAmount));
+        if(windowTotalStake > stakeMap[stakeMapIndex].windowRewardAmount) {
+            calcRewardAmount = stakeAmount.mul(stakeMap[stakeMapIndex].windowRewardAmount).div(windowTotalStake.sub(stakeMap[stakeMapIndex].windowRewardAmount));
+        }
+        
         return calcRewardAmount;
     }
 
