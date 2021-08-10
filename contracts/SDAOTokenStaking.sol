@@ -70,9 +70,6 @@ contract SDAOTokenStaking is Ownable {
   /// @dev Info of each user that stakes tokens.
   mapping(uint256 => mapping(address => UserInfo)) public userInfo;
 
-  /// @dev Account allowed to allocate points.
-  address public pointsAllocator;
-
   /// @dev Total rewards received from governance for distribution.
   /// Used to return remaining rewards if staking is canceled.
   uint256 public totalRewardsReceived;
@@ -86,8 +83,7 @@ contract SDAOTokenStaking is Ownable {
   event LogPoolAddition(uint256 indexed pid, IERC20 indexed lpToken);
   event LogUpdatePool(uint256 indexed pid, uint64 lastRewardBlock, uint256 lpSupply, uint256 accRewardsPerShare);
   event RewardsAdded(uint256 amount);
-  event PointsAllocatorSet(address pointsAllocator);
-
+  
   // ==========  Modifiers  ========== 
 
   /// @dev Ensure the caller is allowed to allocate points.
@@ -105,17 +101,7 @@ contract SDAOTokenStaking is Ownable {
   constructor(address _rewardsToken) public {
     rewardsToken = IERC20(_rewardsToken);
   }
-
-  // ==========  Governance  ========== 
-
-  /// @dev Set the address of the points allocator.
-  /// This account will have the ability to set allocation points for LP rewards.
-  function setPointsAllocator(address _pointsAllocator) external onlyOwner {
-    require(_pointsAllocator != address(0), "Invalid points allocator address.");
-    pointsAllocator = _pointsAllocator;
-    emit PointsAllocatorSet(_pointsAllocator);
-  }
-
+  
   /// @dev Add rewards to be distributed.
   /// Note: This function must be used to add rewards if the owner
   /// wants to retain the option to cancel distribution and reclaim
@@ -129,8 +115,6 @@ contract SDAOTokenStaking is Ownable {
     
     emit RewardsAdded(amount);
   }
-
-
 
   // ==========  Pools  ==========
   
@@ -162,6 +146,33 @@ contract SDAOTokenStaking is Ownable {
 
     emit LogPoolAddition(pid, _lpToken);
   }
+
+  // set the parameter of the pool  
+  function set(uint256 _pid, IERC20 _lpToken, uint256 _sdaoPerBlock, uint64 _endofepochblock, bool _withUpdate) public onlyPointsAllocatorOrOwner {
+      if (_withUpdate) {
+        massUpdatePools();
+        }
+      
+      poolInfo[_pid].tokenPerBlock = _sdaoPerBlock;
+      poolInfo[_pid].endOfEpochBlock = _endofepochblock;
+      poolInfo[_pid].lastRewardBlock = block.number.to64();
+      poolInfo[_pid].lastRewardBlock = 0;
+      poolInfo[_pid].lpSupply = 0;
+
+      lpToken[pid] = _lpToken;
+
+    }
+
+    // reset the pool
+    function resetPool(uint256 _pid) public onlyOwner {
+        delete poolInfo[i];
+    }
+
+    // reset all pools 
+    function massResetPool() public onlyOwner {
+        for (uint256 i = 0; i < poolInfo.length; i++)
+          delete poolInfo[i];
+    }
 
 
   /// @dev To get the rewards per block.
