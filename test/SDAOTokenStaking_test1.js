@@ -428,7 +428,16 @@ contract('SDAOTokenStaking', ([alice, bob, carol, dev, minter]) => {
             const withdrawCarolLog = await this.sdaostaking.withdraw(poolId, stakeAmountCarolBN.toFixed(), carol, { from: carol });
 
             // Move to end of the epoc
-            await time.advanceBlockTo(endEpoCBlockNumber + 10);
+            await time.advanceBlockTo(endEpoCBlockNumber + 1);
+
+            // Extend the Current Pool by 20 more Blocks
+            let rewardPerBlock_2 = "215343022347242000";   // ~0.1953 Rewards per Block
+            const rewardPerBlockBN_2 = new BigNumber(rewardPerBlock_2)
+            await expectRevert(this.sdaostaking.extendPool(poolId, rewardPerBlockBN_2.toFixed(), endEpoCBlockNumber + 20, { from: carol }), "Ownable: caller is not the owner");
+            await this.sdaostaking.extendPool(poolId, rewardPerBlockBN_2.toFixed(), endEpoCBlockNumber + 20, { from: minter });
+
+            // Move to end of the epoc - 20 Blocks got extended
+            await time.advanceBlockTo(endEpoCBlockNumber + 20 + 10);
 
             // Carol Harvest
             await this.sdaostaking.harvest(poolId, carol, { from: carol });
