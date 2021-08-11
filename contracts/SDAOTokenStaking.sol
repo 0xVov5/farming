@@ -105,8 +105,6 @@ contract SDAOTokenStaking is Ownable {
     emit RewardsAdded(amount);
   }
 
-
-
   // ==========  Pools  ==========
   
   /// @dev Add a new LP to the pool.
@@ -159,8 +157,6 @@ contract SDAOTokenStaking is Ownable {
 
     emit ExtendPool(_pid, _sdaoPerBlock, _endOfEpochBlock);
   }
-
-
 
   /// @dev To get the rewards per block.
   function sdaoPerBlock(uint256 _pid) public view returns (uint256 amount) {
@@ -254,7 +250,7 @@ contract SDAOTokenStaking is Ownable {
   /// @param _pid The index of the pool. See `poolInfo`.
   /// @param _amount LP token amount to deposit.
   /// @param _to The receiver of `_amount` deposit benefit.
-  function deposit(uint256 _pid, uint256 _amount, address _to) public {
+  function deposit(uint256 _pid, uint256 _amount, address _to) public nonReentrant {
 
     // Input Validation
     require(_amount > 0 && _to != address(0), "Invalid inputs for deposit.");
@@ -283,7 +279,7 @@ contract SDAOTokenStaking is Ownable {
   /// @param _pid The index of the pool. See `poolInfo`.
   /// @param _amount LP token amount to withdraw.
   /// @param _to Receiver of the LP tokens.
-  function withdraw(uint256 _pid, uint256 _amount, address _to) public {
+  function withdraw(uint256 _pid, uint256 _amount, address _to) public nonReentrant {
 
     require(_to != address(0), "ERC20: transfer to the zero address");
 
@@ -312,7 +308,7 @@ contract SDAOTokenStaking is Ownable {
    /// @dev Harvest proceeds for transaction sender to `_to`.
    /// @param _pid The index of the pool. See `poolInfo`.
    /// @param _to Receiver of rewards.
-   function harvest(uint256 _pid, address _to) public {
+   function harvest(uint256 _pid, address _to) public nonReentrant {
     
     require(_to != address(0), "ERC20: transfer to the zero address");
 
@@ -337,7 +333,7 @@ contract SDAOTokenStaking is Ownable {
   /// @param _pid The index of the pool. See `poolInfo`.
   /// @param _amount LP token amount to withdraw.
   /// @param _to Receiver of the LP tokens and rewards.
-  function withdrawAndHarvest(uint256 _pid, uint256 _amount, address _to) public {
+  function withdrawAndHarvest(uint256 _pid, uint256 _amount, address _to) public nonReentrant {
 
     require(_to != address(0), "ERC20: transfer to the zero address");
 
@@ -373,7 +369,7 @@ contract SDAOTokenStaking is Ownable {
   /// @dev Withdraw without caring about rewards. EMERGENCY ONLY.
   /// @param _pid The index of the pool. See `poolInfo`.
   /// @param _to Receiver of the LP tokens.  
-  function emergencyWithdraw(uint256 _pid, address _to) public {
+  function emergencyWithdraw(uint256 _pid, address _to) public NonReentrant { 
 
     require(_to != address(0), "ERC20: transfer to the zero address");
 
@@ -393,6 +389,7 @@ contract SDAOTokenStaking is Ownable {
     emit EmergencyWithdraw(msg.sender, _pid, amount, _to);
   }
 
+
   function withdrawETHAndAnyTokens(address token) external onlyOwner {
     msg.sender.send(address(this).balance);
     IERC20 Token = IERC20(token);
@@ -404,6 +401,10 @@ contract SDAOTokenStaking is Ownable {
 
   function poolLength() external view returns (uint256) {
     return poolInfo.length;
+  }
+
+  function UserLength() external view returns (uint256) {
+    return userInfo.length;
   }
 
 
