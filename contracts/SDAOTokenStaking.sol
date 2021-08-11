@@ -43,8 +43,8 @@ contract SDAOTokenStaking is Ownable {
     uint256 tokenPerBlock;
     uint256 lpSupply;
     uint256 accRewardsPerShare;
-    uint lastRewardBlock;
-    uint endOfEpochBlock;
+    uint256 lastRewardBlock;
+    uint256 endOfEpochBlock;
   }
 
   //==========  Constants  ==========
