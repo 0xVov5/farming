@@ -19,7 +19,6 @@ at commit hash 10148a31d9192bc803dac5d24fe0319b52ae99a4.
 
 contract SDAOTokenStaking is Ownable {
   using BoringMath for uint256;
-  using BoringMath128 for uint128;
   using BoringERC20 for IERC20;
   using SignedSafeMath for int256;
 
@@ -43,9 +42,9 @@ contract SDAOTokenStaking is Ownable {
   struct PoolInfo {
     uint256 tokenPerBlock;
     uint256 lpSupply;
-    uint128 accRewardsPerShare;
-    uint64 lastRewardBlock;
-    uint endOfEpochBlock;
+    uint256 accRewardsPerShare;
+    uint256 lastRewardBlock;
+    uint256 endOfEpochBlock;
   }
 
   //==========  Constants  ==========
@@ -81,19 +80,9 @@ contract SDAOTokenStaking is Ownable {
   event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount, address indexed to);
   event Harvest(address indexed user, uint256 indexed pid, uint256 amount);
   event LogPoolAddition(uint256 indexed pid, IERC20 indexed lpToken);
-  event LogUpdatePool(uint256 indexed pid, uint64 lastRewardBlock, uint256 lpSupply, uint256 accRewardsPerShare);
+  event LogUpdatePool(uint256 indexed pid, uint256 lastRewardBlock, uint256 lpSupply, uint256 accRewardsPerShare);
   event RewardsAdded(uint256 amount);
-  
-  // ==========  Modifiers  ========== 
-
-  /// @dev Ensure the caller is allowed to allocate points.
-  modifier onlyPointsAllocatorOrOwner {
-    require(
-      msg.sender == pointsAllocator || msg.sender == owner(),
-      "MultiTokenStaking: not authorized to allocate points"
-    );
-    _;
-  }
+  event ExtendPool(uint256 indexed pid, uint256 rewardBlock, uint256 endOfEpochBlock);
 
   // ==========  Constructor  ==========
 
@@ -101,12 +90,12 @@ contract SDAOTokenStaking is Ownable {
   constructor(address _rewardsToken) public {
     rewardsToken = IERC20(_rewardsToken);
   }
-  
+
   /// @dev Add rewards to be distributed.
   /// Note: This function must be used to add rewards if the owner
   /// wants to retain the option to cancel distribution and reclaim
   /// undistributed tokens.  
-  function addRewards(uint256 amount) external onlyPointsAllocatorOrOwner {
+  function addRewards(uint256 amount) external onlyOwner {
     
     require(rewardsToken.balanceOf(msg.sender) > 0, "ERC20: not enough tokens to transfer");
 
@@ -122,13 +111,13 @@ contract SDAOTokenStaking is Ownable {
   /// Can only be called by the owner or the points allocator.
   /// @param _lpToken Address of the LP ERC-20 token.
   /// @param _sdaoPerBlock Rewards per block.
-  /// @param _endofepochblock Epocs end block number.
-  function add(IERC20 _lpToken, uint256 _sdaoPerBlock, uint64 _endofepochblock) public onlyPointsAllocatorOrOwner {
+  /// @param _endOfEpochBlock Epocs end block number.
+  function add(IERC20 _lpToken, uint256 _sdaoPerBlock, uint256 _endOfEpochBlock) public onlyOwner {
 
     //This is not needed as we are going to use the contract for multiple pools with the same LP Tokens
     //require(!stakingPoolExists[address(_lpToken)], " Staking pool already exists.");
     
-    require(_endofepochblock > block.number, "Cannot create the pool for past time.");
+    require(_endOfEpochBlock > block.number, "Cannot create the pool for past time.");
 
     uint256 pid = poolInfo.length;
 
@@ -136,8 +125,8 @@ contract SDAOTokenStaking is Ownable {
 
     poolInfo.push(PoolInfo({
       tokenPerBlock: _sdaoPerBlock,
-      endOfEpochBlock:_endofepochblock,
-      lastRewardBlock: block.number.to64(),
+      endOfEpochBlock:_endOfEpochBlock,
+      lastRewardBlock: block.number,
       lpSupply:0,
       accRewardsPerShare: 0
     }));
@@ -147,33 +136,27 @@ contract SDAOTokenStaking is Ownable {
     emit LogPoolAddition(pid, _lpToken);
   }
 
-  // set the parameter of the pool  
-  function set(uint256 _pid, IERC20 _lpToken, uint256 _sdaoPerBlock, uint64 _endofepochblock, bool _withUpdate) public onlyPointsAllocatorOrOwner {
-      if (_withUpdate) {
-        massUpdatePools();
-        }
-      
-      poolInfo[_pid].tokenPerBlock = _sdaoPerBlock;
-      poolInfo[_pid].endOfEpochBlock = _endofepochblock;
-      poolInfo[_pid].lastRewardBlock = block.number.to64();
-      poolInfo[_pid].lastRewardBlock = 0;
-      poolInfo[_pid].lpSupply = 0;
+  /// @dev Add a new LP to the pool.
+  /// Can only be called by the owner or the points allocator.
+  /// @param _pid Pool Id to extend the schedule.
+  /// @param _sdaoPerBlock Rewards per block.
+  /// @param _endOfEpochBlock Epocs end block number.
+  function extendPool(uint256 _pid, uint256 _sdaoPerBlock, uint256 _endOfEpochBlock) public onlyOwner {
+    
+    require(_endOfEpochBlock > block.number && _endOfEpochBlock > poolInfo[_pid].endOfEpochBlock, "Cannot extend the pool for past time.");
 
-      lpToken[pid] = _lpToken;
+    // Update the accumulated rewards
+    PoolInfo memory pool = updatePool(_pid);
 
-    }
+    pool.tokenPerBlock = _sdaoPerBlock;
+    pool.endOfEpochBlock = _endOfEpochBlock;
+    pool.lastRewardBlock = block.number;
 
-    // reset the pool
-    function resetPool(uint256 _pid) public onlyOwner {
-        delete poolInfo[i];
-    }
+    // Update the Pool Storage
+    poolInfo[_pid] = pool;
 
-    // reset all pools 
-    function massResetPool() public onlyOwner {
-        for (uint256 i = 0; i < poolInfo.length; i++)
-          delete poolInfo[i];
-    }
-
+    emit ExtendPool(_pid, _sdaoPerBlock, _endOfEpochBlock);
+  }
 
   /// @dev To get the rewards per block.
   function sdaoPerBlock(uint256 _pid) public view returns (uint256 amount) {
@@ -212,11 +195,11 @@ contract SDAOTokenStaking is Ownable {
           }
 
           uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
-          pool.accRewardsPerShare = pool.accRewardsPerShare.add((sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply).to128());
+          pool.accRewardsPerShare = pool.accRewardsPerShare.add((sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply));
 
        }
 
-       pool.lastRewardBlock = block.number.to64();
+       pool.lastRewardBlock = block.number;
        poolInfo[_pid] = pool;
        emit LogUpdatePool(_pid, pool.lastRewardBlock, lpSupply, pool.accRewardsPerShare);
 
