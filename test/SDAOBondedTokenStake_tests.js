@@ -1,4 +1,7 @@
 "use strict";
+const { BN, expectRevert, expectEvent, time } = require('@openzeppelin/test-helpers');
+let BigNumber = require("bignumber.js");
+
 var  TokenStake = artifacts.require("./SDAOBondedTokenStake.sol");
 
 let Contract = require("@truffle/contract");
@@ -24,7 +27,11 @@ async function testErrorRevert(prom)
     }
     assert(rezE >= 0, "Must generate error and error message must contain revert");
 }
-  
+
+
+const decimals = 18;
+const decimalFactor = (new BigNumber(10)).pow(decimals); 
+
 contract('TokenStake', function(accounts) {
 
 console.log("Number of Accounts - ", accounts.length)
@@ -34,14 +41,14 @@ console.log("Number of Accounts - ", accounts.length)
     var token;
     var bonusToken;
     
-    let GAmt = 10000  * 100000000;
-    let Amt1 = 10  * 100000000;
-    let Amt2 = 20  * 100000000;
-    let Amt3 = 30 * 100000000;
-    let Amt4 = 40 * 100000000;
-    let Amt5 = 50 * 100000000;
-    let Amt6 = 60 * 100000000;
-    let Amt7 = 70 * 100000000;
+    let GAmt = (new BigNumber(10000)).times(decimalFactor).toFixed(); //10000  * 100000000;
+    let Amt1 = (new BigNumber(10)).times(decimalFactor).toFixed(); //10  * 100000000;
+    let Amt2 = (new BigNumber(20)).times(decimalFactor).toFixed(); //20  * 100000000;
+    let Amt3 = (new BigNumber(30)).times(decimalFactor).toFixed(); //30 * 100000000;
+    let Amt4 = (new BigNumber(40)).times(decimalFactor).toFixed(); //40 * 100000000;
+    let Amt5 = (new BigNumber(50)).times(decimalFactor).toFixed(); //50 * 100000000;
+    let Amt6 = (new BigNumber(60)).times(decimalFactor).toFixed(); //60 * 100000000;
+    let Amt7 = (new BigNumber(70)).times(decimalFactor).toFixed(); //70 * 100000000;
 
     before(async () => 
         {
@@ -94,7 +101,7 @@ console.log("Number of Accounts - ", accounts.length)
         
             const currentStakeMapIndex_b = (await tokenStake.currentStakeMapIndex.call()).toNumber();
 
-            const windowTotalStake_b = (await tokenStake.windowTotalStake.call()).toNumber();
+            const windowTotalStake_b = (await tokenStake.windowTotalStake.call());
 
             // Open Stake for a Given Period
             await tokenStake.openForStake(_startPeriod, _endSubmission, _endPeriod, _rewardAmount, _maxStake, _windowMaxAmount, {from:_account});
@@ -107,7 +114,7 @@ console.log("Number of Accounts - ", accounts.length)
             const {startPeriod: startPeriod_a, submissionEndPeriod: submissionEndPeriod_a, endPeriod: endPeriod_a, maxStake: maxStake_a, windowRewardAmount: windowRewardAmount_a, windowMaxAmount: windowMaxAmount_a}
             = await tokenStake.stakeMap.call(currentStakeMapIndex);
 
-            const windowTotalStake_a = (await tokenStake.windowTotalStake.call()).toNumber();
+            const windowTotalStake_a = (await tokenStake.windowTotalStake.call());
 
             // Test the Stake Map Index
             assert.equal(currentStakeMapIndex, currentStakeMapIndex_b + 1);
@@ -116,10 +123,11 @@ console.log("Number of Accounts - ", accounts.length)
             assert.equal(startPeriod_a.toNumber(), _startPeriod);
             assert.equal(submissionEndPeriod_a.toNumber(), _endSubmission);
             assert.equal(endPeriod_a.toNumber(), _endPeriod);
-            assert.equal(maxStake_a.toNumber(), _maxStake);
-            assert.equal(windowTotalStake_a, windowTotalStake_b + _rewardAmount);
-            assert.equal(windowRewardAmount_a.toNumber(), _rewardAmount);
-            assert.equal(windowMaxAmount_a.toNumber(), _windowMaxAmount);
+
+            assert.equal((new BigNumber(maxStake_a)).toFixed(), _maxStake);
+            assert.equal((new BigNumber(windowTotalStake_a)).toFixed(), (new BigNumber(windowTotalStake_b)).plus(_rewardAmount).toFixed());
+            assert.equal((new BigNumber(windowRewardAmount_a)).toFixed(), _rewardAmount);
+            assert.equal((new BigNumber(windowMaxAmount_a)).toFixed(), _windowMaxAmount);
 
         }
 
@@ -127,10 +135,10 @@ console.log("Number of Accounts - ", accounts.length)
 
             const currentStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
 
-            const wallet_bal_b = (await token.balanceOf(_account)).toNumber();
-            const contract_bal_b = (await token.balanceOf(tokenStake.address)).toNumber();
+            const wallet_bal_b = new BigNumber(await token.balanceOf(_account)).toFixed();
+            const contract_bal_b = new BigNumber(await token.balanceOf(tokenStake.address)).toFixed();
 
-            const contract_account_bal_b = (await tokenStake.balances(_account)).toNumber();
+            const contract_account_bal_b = new BigNumber(await tokenStake.balances(_account)).toFixed();
 
             const {found: found_b, amount: amount_b, rewardComputeIndex: rewardComputeIndex_b}
             = await tokenStake.getStakeInfo.call(_account);
@@ -138,7 +146,7 @@ console.log("Number of Accounts - ", accounts.length)
             const {startPeriod: startPeriod_b, submissionEndPeriod: submissionEndPeriod_b, endPeriod: endPeriod_b, maxStake: maxStake_b, windowRewardAmount: windowRewardAmount_b, windowMaxAmount: windowMaxAmount_b}
             = await tokenStake.stakeMap.call(currentStakeMapIndex);            
 
-            const windowTotalStake_b = (await tokenStake.windowTotalStake.call()).toNumber();
+            const windowTotalStake_b = new BigNumber(await tokenStake.windowTotalStake.call()).toFixed();
 
             // Submit the Stake
             await tokenStake.submitStake( _stakeAmount, {from:_account});
@@ -149,42 +157,42 @@ console.log("Number of Accounts - ", accounts.length)
             const {startPeriod: startPeriod_a, submissionEndPeriod: submissionEndPeriod_a, endPeriod: endPeriod_a, maxStake: maxStake_a, windowRewardAmount: windowRewardAmount_a, windowMaxAmount: windowMaxAmount_a}
             = await tokenStake.stakeMap.call(currentStakeMapIndex);
 
-            const windowTotalStake_a = (await tokenStake.windowTotalStake.call()).toNumber();
+            const windowTotalStake_a = new BigNumber(await tokenStake.windowTotalStake.call()).toFixed();
 
-            const wallet_bal_a = (await token.balanceOf(_account)).toNumber();
-            const contract_bal_a = (await token.balanceOf(tokenStake.address)).toNumber();
+            const wallet_bal_a = new BigNumber(await token.balanceOf(_account)).toFixed();
+            const contract_bal_a = new BigNumber(await token.balanceOf(tokenStake.address)).toFixed();
 
-            const contract_account_bal_a = (await tokenStake.balances(_account)).toNumber();
+            const contract_account_bal_a = new BigNumber(await tokenStake.balances(_account)).toFixed();
 
             assert.equal(rewardComputeIndex_a.toNumber(), rewardComputeIndex_b.toNumber());
 
 
             // Stake Amount Should Increase
-            assert.equal(amount_a.toNumber(), amount_b.toNumber() + _stakeAmount);
+            assert.equal((new BigNumber(amount_a)).toFixed(), (new BigNumber(amount_b)).plus(_stakeAmount).toFixed());
 
             // Wallet balance should reduce
-            assert.equal(wallet_bal_a, wallet_bal_b - _stakeAmount);
+            assert.equal(wallet_bal_a, (new BigNumber(wallet_bal_b)).minus(_stakeAmount).toFixed());
 
             // Contract balance should increase
-            assert.equal(contract_bal_a, contract_bal_b + _stakeAmount);
+            assert.equal(contract_bal_a, (new BigNumber(contract_bal_b)).plus(_stakeAmount).toFixed());
 
             // Account balance in the contract should increase
-            assert.equal(contract_account_bal_a, contract_account_bal_b + _stakeAmount);
+            assert.equal(contract_account_bal_a, (new BigNumber(contract_account_bal_b)).plus(_stakeAmount).toFixed());
 
             // Should be increased by the amount of new stake submission
-            assert.equal(windowTotalStake_a, windowTotalStake_b + _stakeAmount);
+            assert.equal(windowTotalStake_a, (new BigNumber(windowTotalStake_b)).plus(_stakeAmount).toFixed());
         }
 
 
         const claimStakeAndVerify = async (_stakeMapIndex, _account) => {
 
             // Token Balance
-            const wallet_bal_b = (await token.balanceOf(_account)).toNumber();
-            const contract_bal_b = (await token.balanceOf(tokenStake.address)).toNumber();
-            const wallet_bonusToken_bal_b = (await bonusToken.balanceOf(_account)).toNumber();
+            const wallet_bal_b = new BigNumber(await token.balanceOf(_account)).toFixed();
+            const contract_bal_b = new BigNumber(await token.balanceOf(tokenStake.address)).toFixed();
+            const wallet_bonusToken_bal_b = new BigNumber(await bonusToken.balanceOf(_account)).toFixed();
 
             // Contract Stake Balance
-            const contract_account_bal_b = (await tokenStake.balances(_account)).toNumber();
+            const contract_account_bal_b = new BigNumber(await tokenStake.balances(_account)).toFixed();
 
             const {found: found_b, amount: amount_b, rewardComputeIndex: rewardComputeIndex_b, bonusAmount: bonusAmount_b}
             = await tokenStake.getStakeInfo.call(_account);
@@ -192,7 +200,7 @@ console.log("Number of Accounts - ", accounts.length)
             const {startPeriod: startPeriod_b, submissionEndPeriod: submissionEndPeriod_b, endPeriod: endPeriod_b, maxStake: maxStake_b, windowRewardAmount: windowRewardAmount_b, windowMaxAmount: windowMaxAmount_b}
             = await tokenStake.stakeMap.call(_stakeMapIndex); 
 
-            const windowTotalStake_b = (await tokenStake.windowTotalStake.call()).toNumber();
+            const windowTotalStake_b = new BigNumber(await tokenStake.windowTotalStake.call()).toFixed();
 
             // Call Withdraw Stake
             //await tokenStake.claimStake(_stakeMapIndex, {from:_account});
@@ -201,82 +209,82 @@ console.log("Number of Accounts - ", accounts.length)
             const {found: found_a, amount: amount_a, rewardComputeIndex: rewardComputeIndex_a, bonusAmount: bonusAmount_a}
             = await tokenStake.getStakeInfo.call(_account);
 
-            const windowTotalStake_a = (await tokenStake.windowTotalStake.call()).toNumber();
+            const windowTotalStake_a = new BigNumber(await tokenStake.windowTotalStake.call()).toFixed();
 
             // Token Balance
-            const wallet_bal_a = (await token.balanceOf(_account)).toNumber();
-            const contract_bal_a = (await token.balanceOf(tokenStake.address)).toNumber();
-            const wallet_bonusToken_bal_a = (await bonusToken.balanceOf(_account)).toNumber();
+            const wallet_bal_a = new BigNumber(await token.balanceOf(_account)).toFixed();
+            const contract_bal_a = new BigNumber(await token.balanceOf(tokenStake.address)).toFixed();
+            const wallet_bonusToken_bal_a = new BigNumber(await bonusToken.balanceOf(_account)).toFixed();
 
             // Contract Stake Balance
-            const contract_account_bal_a = (await tokenStake.balances(_account)).toNumber();
+            const contract_account_bal_a = new BigNumber(await tokenStake.balances(_account)).toFixed();
 
             let claimAmount = 0;
-            claimAmount = amount_b.toNumber();
+            claimAmount = amount_b;
 
             // Wallet Balance should increase
-            assert.equal(wallet_bal_b, wallet_bal_a - claimAmount );
+            assert.equal(wallet_bal_b, (new BigNumber(wallet_bal_a)).minus(claimAmount).toFixed());
 
             // Contract Token Balance Should Reduce
-            assert.equal(contract_bal_b, contract_bal_a + claimAmount );
+            assert.equal(contract_bal_b, (new BigNumber(contract_bal_a)).plus(claimAmount).toFixed());
 
             // Account Balance, Total Stake & Total Approved Stake in the contract should reduce
-            assert.equal(contract_account_bal_b, contract_account_bal_a + claimAmount);
+            assert.equal(contract_account_bal_b, (new BigNumber(contract_account_bal_a)).plus(claimAmount).toFixed());
 
             // Window total amount should reduce
-            assert.equal(windowTotalStake_a, windowTotalStake_b - claimAmount);
+            assert.equal(windowTotalStake_a, (new BigNumber(windowTotalStake_b)).minus(claimAmount).toFixed());
 
             // Stake amount should be reset
-            assert.equal(amount_a.toNumber(), 0);
+            assert.equal((new BigNumber(amount_a)).toFixed(), 0);
 
             // Bonus token balance should be zero
-            assert.equal(bonusAmount_a.toNumber(), 0);
+            assert.equal((new BigNumber(bonusAmount_a)).toFixed(), 0);
             
             // Wallet balance for the bonus token should increase
-            assert.equal(wallet_bonusToken_bal_a, wallet_bonusToken_bal_b + bonusAmount_b.toNumber())
+            assert.equal(wallet_bonusToken_bal_a, (new BigNumber(wallet_bonusToken_bal_b)).plus(bonusAmount_b).toFixed())
 
         }
 
         const withdrawTokenAndVerify = async(_amount, _account) => {
 
             // Token Balance
-            const wallet_bal_b = (await token.balanceOf(_account)).toNumber();
-            const contract_bal_b = (await token.balanceOf(tokenStake.address)).toNumber();
+            const wallet_bal_b = new BigNumber(await token.balanceOf(_account)).toFixed();
+            const contract_bal_b = new BigNumber(await token.balanceOf(tokenStake.address)).toFixed();
 
             // Call Withdraw Stake
             await tokenStake.withdrawToken(_amount, {from:_account});
 
             // Token Balance
-            const wallet_bal_a = (await token.balanceOf(_account)).toNumber();
-            const contract_bal_a = (await token.balanceOf(tokenStake.address)).toNumber();
+            const wallet_bal_a = new BigNumber(await token.balanceOf(_account)).toFixed();
+            const contract_bal_a = new BigNumber(await token.balanceOf(tokenStake.address)).toFixed();
 
             // Wallet Balance Should Increase
-            assert.equal(wallet_bal_b, wallet_bal_a - _amount);
+            assert.equal(wallet_bal_b, (new BigNumber(wallet_bal_a)).minus(_amount).toFixed());
 
             // Contract Balance Should Reduce
-            assert.equal(contract_bal_b, contract_bal_a + _amount);
+            assert.equal(contract_bal_b, (new BigNumber(contract_bal_a)).plus(_amount).toFixed());
 
         }
 
         const depositTokenAndVerify = async(_amount, _account) => {
 
             // Token Balance
-            const wallet_bal_b = (await token.balanceOf(_account)).toNumber();
-            const contract_bal_b = (await token.balanceOf(tokenStake.address)).toNumber();
+            const wallet_bal_b = (await token.balanceOf(_account));
+            const contract_bal_b = (await token.balanceOf(tokenStake.address));
 
             // Call Withdraw Stake
             // await tokenStake.depositToken(_amount, {from:_account});
             await token.transfer(tokenStake.address,  _amount, {from:_account});
 
             // Token Balance
-            const wallet_bal_a = (await token.balanceOf(_account)).toNumber();
-            const contract_bal_a = (await token.balanceOf(tokenStake.address)).toNumber();
+            const wallet_bal_a = (await token.balanceOf(_account));
+            const contract_bal_a = (await token.balanceOf(tokenStake.address));
 
             // Wallet Balance Should reduce
-            assert.equal(wallet_bal_b, wallet_bal_a + _amount);
+            assert.equal((new BigNumber(wallet_bal_b)).toFixed(), (new BigNumber(wallet_bal_a)).plus(_amount).toFixed());
 
             // Contract Balance Should Increase
-            assert.equal(contract_bal_b, contract_bal_a - _amount);
+            assert.equal((new BigNumber(contract_bal_b)).toFixed(), (new BigNumber(contract_bal_a)).minus(_amount).toFixed());
             
         }
 
@@ -284,10 +292,10 @@ console.log("Number of Accounts - ", accounts.length)
 
             const currentStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
 
-            const wallet_bal_b = (await token.balanceOf(_staker)).toNumber();
-            const contract_bal_b = (await token.balanceOf(tokenStake.address)).toNumber();
+            const wallet_bal_b = new BigNumber(await token.balanceOf(_staker)).toFixed();
+            const contract_bal_b = new BigNumber(await token.balanceOf(tokenStake.address)).toFixed();
 
-            const contract_account_bal_b = (await tokenStake.balances(_staker)).toNumber();
+            const contract_account_bal_b = new BigNumber(await tokenStake.balances(_staker)).toFixed();
 
             const {found: found_b, amount: amount_b, rewardComputeIndex: rewardComputeIndex_b}
             = await tokenStake.getStakeInfo.call(_staker);
@@ -295,7 +303,7 @@ console.log("Number of Accounts - ", accounts.length)
             const {startPeriod: startPeriod_b, submissionEndPeriod: submissionEndPeriod_b, endPeriod: endPeriod_b, maxStake: maxStake_b, windowRewardAmount: windowRewardAmount_b, windowMaxAmount: windowMaxAmount_b}
             = await tokenStake.stakeMap.call(currentStakeMapIndex);
 
-            const windowTotalStake_b = (await tokenStake.windowTotalStake.call()).toNumber();
+            const windowTotalStake_b = new BigNumber(await tokenStake.windowTotalStake.call()).toFixed();
 
             // auto renew the Stake
             await tokenStake.computeAndAddReward(existingStakeMapIndex, _staker, bonusAmount, {from:_account});
@@ -308,33 +316,34 @@ console.log("Number of Accounts - ", accounts.length)
             const {startPeriod: startPeriod_a, submissionEndPeriod: submissionEndPeriod_a, endPeriod: endPeriod_a, maxStake: maxStake_a, windowRewardAmount: windowRewardAmount_a, windowMaxAmount: windowMaxAmount_a}
             = await tokenStake.stakeMap.call(currentStakeMapIndex);
 
-            const windowTotalStake_a = (await tokenStake.windowTotalStake.call()).toNumber();
+            const windowTotalStake_a = new BigNumber(await tokenStake.windowTotalStake.call()).toFixed();
 
-            const wallet_bal_a = (await token.balanceOf(_staker)).toNumber();
-            const contract_bal_a = (await token.balanceOf(tokenStake.address)).toNumber();
+            const wallet_bal_a = new BigNumber(await token.balanceOf(_staker)).toFixed();
+            const contract_bal_a = new BigNumber(await token.balanceOf(tokenStake.address)).toFixed();
 
-            const contract_account_bal_a = (await tokenStake.balances(_staker)).toNumber();
+            const contract_account_bal_a = new BigNumber(await tokenStake.balances(_staker)).toFixed();
 
             // Calculate the Reward
-            const rewardAmount = Math.floor( amount_b.toNumber() * windowRewardAmount_b.toNumber() / (windowTotalStake_b - windowRewardAmount_b.toNumber()));
+            //const rewardAmount = Math.floor( amount_b.toNumber() * windowRewardAmount_b.toNumber() / (windowTotalStake_b - windowRewardAmount_b.toNumber()));
+            const rewardAmount = (new BigNumber(amount_b)).times(windowRewardAmount_b).div((new BigNumber(windowTotalStake_b)).minus(windowRewardAmount_b)).integerValue(BigNumber.ROUND_FLOOR);
 
-            const newStakeAmount = amount_b.toNumber() + rewardAmount;
+            const newStakeAmount = (new BigNumber(amount_b)).plus(rewardAmount).toFixed();
             const returnAmount = 0;//newStakeAmount -  _amount;    // There will be any return as full amount is Auto Renewed
 
             // Wallet should balance should increase
-            assert.equal(wallet_bal_b, wallet_bal_a - returnAmount);
+            assert.equal(wallet_bal_b, (new BigNumber(wallet_bal_a)).minus(returnAmount).toFixed());
 
             // Contract Token Balance Should Reduce
-            assert.equal(contract_bal_b, contract_bal_a + returnAmount);
+            assert.equal(contract_bal_b, (new BigNumber(contract_bal_a)).plus(returnAmount).toFixed());
 
             // Approved Amount should be increased
-            assert.equal(amount_a.toNumber(), amount_b.toNumber() + rewardAmount);
+            assert.equal((new BigNumber(amount_a)).toFixed(), (new BigNumber(amount_b)).plus(rewardAmount).toFixed());
 
             // Staking Period Window Total Stake should not change
             assert.equal(windowTotalStake_a, windowTotalStake_b);
 
             // Account balance in the contract should reduce if approved amount < new staked amount
-            assert.equal(contract_account_bal_a, contract_account_bal_b + rewardAmount - returnAmount);
+            assert.equal(contract_account_bal_a, (new BigNumber(contract_account_bal_b)).plus(rewardAmount).minus(returnAmount).toFixed());
 
             // Check for the reward computed index
             assert.equal(rewardComputeIndex_a.toNumber(), existingStakeMapIndex)
@@ -343,11 +352,11 @@ console.log("Number of Accounts - ", accounts.length)
 
         const withdrawStakeAndVerify = async (existingStakeMapIndex, _stakeAmount, _account) => {
 
-            const wallet_bal_b = (await token.balanceOf(_account)).toNumber();
-            const contract_bal_b = (await token.balanceOf(tokenStake.address)).toNumber();
-            const wallet_bonusToken_bal_b = (await bonusToken.balanceOf(_account)).toNumber();
+            const wallet_bal_b = new BigNumber(await token.balanceOf(_account)).toFixed();
+            const contract_bal_b = new BigNumber(await token.balanceOf(tokenStake.address)).toFixed();
+            const wallet_bonusToken_bal_b = new BigNumber(await bonusToken.balanceOf(_account)).toFixed();
 
-            const contract_account_bal_b = (await tokenStake.balances(_account)).toNumber();
+            const contract_account_bal_b = new BigNumber(await tokenStake.balances(_account)).toFixed();
             
             const {found: found_b, amount: amount_b, rewardComputeIndex: rewardComputeIndex_b, bonusAmount: bonusAmount_b}
             = await tokenStake.getStakeInfo.call(_account);
@@ -365,29 +374,29 @@ console.log("Number of Accounts - ", accounts.length)
             const {startPeriod: startPeriod_a, submissionEndPeriod: submissionEndPeriod_a, endPeriod: endPeriod_a, maxStake: maxStake_a, windowRewardAmount: windowRewardAmount_a, windowMaxAmount: windowMaxAmount_a}
             = await tokenStake.stakeMap.call(existingStakeMapIndex);
             
-            const wallet_bal_a = (await token.balanceOf(_account)).toNumber();
-            const contract_bal_a = (await token.balanceOf(tokenStake.address)).toNumber();
-            const wallet_bonusToken_bal_a = (await bonusToken.balanceOf(_account)).toNumber();
+            const wallet_bal_a = new BigNumber(await token.balanceOf(_account)).toFixed();
+            const contract_bal_a = new BigNumber(await token.balanceOf(tokenStake.address)).toFixed();
+            const wallet_bonusToken_bal_a = new BigNumber(await bonusToken.balanceOf(_account)).toFixed();
 
-            const contract_account_bal_a = (await tokenStake.balances(_account)).toNumber();
+            const contract_account_bal_a = new BigNumber(await tokenStake.balances(_account)).toFixed();
 
             // Stake Amount Should Reduce
-            assert.equal(amount_a.toNumber(), amount_b.toNumber() - _stakeAmount);
+            assert.equal((new BigNumber(amount_a)).toFixed(), (new BigNumber(amount_b)).minus(_stakeAmount).toFixed());
 
             // Token Balance in the wallet should increase
-            assert.equal(wallet_bal_a, wallet_bal_b + _stakeAmount);
+            assert.equal(wallet_bal_a, (new BigNumber(wallet_bal_b)).plus(_stakeAmount).toFixed());
 
             // Contract Token Balance Should Reduce
-            assert.equal(contract_bal_b, contract_bal_a + _stakeAmount);
+            assert.equal(contract_bal_b, (new BigNumber(contract_bal_a)).plus(_stakeAmount).toFixed());
 
             // Token Balance in the contract should reduce
-            assert.equal(contract_account_bal_a, contract_account_bal_b - _stakeAmount);
+            assert.equal(contract_account_bal_a, (new BigNumber(contract_account_bal_b)).minus(_stakeAmount).toFixed());
 
             // Bonus token balance should be zero
-            assert.equal(bonusAmount_a.toNumber(), 0);
+            assert.equal((new BigNumber(bonusAmount_a)).toFixed(), 0);
 
             // Wallet balance for the bonus token should increase
-            assert.equal(wallet_bonusToken_bal_a, wallet_bonusToken_bal_b + bonusAmount_b.toNumber())
+            assert.equal(wallet_bonusToken_bal_a, (new BigNumber(wallet_bonusToken_bal_b)).plus(bonusAmount_b).toFixed())
 
         }
 
@@ -452,7 +461,7 @@ console.log("Number of Accounts - ", accounts.length)
                         console.log("found - ", stakeData.found);
                         console.log("amount - ", stakeData.amount.toNumber());
                         console.log("rewardComputeIndex - ", stakeData.rewardComputeIndex.toNumber());
-                        console.log("balance - ",(await tokenStake.balances(accounts[i])).toNumber());
+                        console.log("balance - ", new BigNumber(await tokenStake.balances(accounts[i])).toFixed());
     
                         console.log("----------------------------------------------------------------")
                     }
@@ -461,8 +470,8 @@ console.log("Number of Accounts - ", accounts.length)
                 console.log("*******************************Current State of the Contract*************************************")
             }
 
-            console.log("Window Total Stake - ", (await tokenStake.windowTotalStake.call()).toNumber());
-            console.log("Contract Balance - ", (await token.balanceOf(tokenStake.address)).toNumber());
+            console.log("Window Total Stake - ", new BigNumber(await tokenStake.windowTotalStake.call()).toFixed());
+            console.log("Contract Balance - ", new BigNumber(await token.balanceOf(tokenStake.address)).toFixed());
 
             console.log("##############################End of Display##############################")
 
@@ -473,27 +482,27 @@ console.log("Number of Accounts - ", accounts.length)
         const airDropStakesAndVerify = async(existingStakeMapIndex, _stakers,_stakeAmounts, _account) => {
 
 
-            const windowTotalStake_b = (await tokenStake.windowTotalStake.call()).toNumber();
+            const windowTotalStake_b = new BigNumber(await tokenStake.windowTotalStake.call()).toFixed();
 
             // Add Air Drop Stakes 
             await tokenStake.airDropStakes(existingStakeMapIndex, _stakers, _stakeAmounts, {from:_account});            
 
 
-            const windowTotalStake_a = (await tokenStake.windowTotalStake.call()).toNumber();
+            const windowTotalStake_a = new BigNumber(await tokenStake.windowTotalStake.call()).toFixed();
 
             // All the stakers balance to be same as air dropped stakeAmount
             let stakersBalInContract = [];
-            let totalStakeMigrated = 0;
+            let totalStakeMigrated = new BigNumber(0);
             for(var i=0; i<_stakers.length;i++) {
-                const bal = (await tokenStake.balances(_stakers[i])).toNumber();
+                const bal = new BigNumber(await tokenStake.balances(_stakers[i])).toFixed();
                 stakersBalInContract.push(bal);
 
-                totalStakeMigrated = totalStakeMigrated + bal;
+                totalStakeMigrated = totalStakeMigrated.plus(bal);
             }
             assert.deepStrictEqual(_stakeAmounts, stakersBalInContract);
 
             // Window Total Stake Amount should be with the total amount air dropped stake
-            assert.equal(windowTotalStake_a, windowTotalStake_b + totalStakeMigrated);
+            assert.equal(windowTotalStake_a, totalStakeMigrated.plus(windowTotalStake_b).toFixed());
 
         }
 
@@ -509,7 +518,8 @@ console.log("Number of Accounts - ", accounts.length)
         // accounts[9] -> Token Operator
 
         // An explicit call is required to mint the tokens for SDAO
-        await token.mint(accounts[0], 1000 * GAmt, {from:accounts[0]});
+        const initMint = (new BigNumber(GAmt).times(1000).toFixed())
+        await token.mint(accounts[0], initMint, {from:accounts[0]});
 
         await approveTokensToContract(1, 9, GAmt);
 
@@ -559,23 +569,23 @@ console.log("Number of Accounts - ", accounts.length)
         const startPeriod = baseTime + 10;
         const endSubmission = startPeriod + 30;
         const endPeriod = endSubmission + 60;
-        const maxStake          = 100     * 100000000; // Max = 100 SDAO
-        const rewardAmount      = 30    * 100000000; // Reward = 30 SDAO
-        const windowMaxAmount      = 900    * 100000000; // window max limit = 900 SDAO
-        const bonusAmount = 1 * 100000000;
+        const maxStake          = (new BigNumber(100)).times(decimalFactor).toFixed(); //100     * 100000000; // Max = 100 SDAO
+        const rewardAmount      = (new BigNumber(30)).times(decimalFactor).toFixed(); //30    * 100000000; // Reward = 30 SDAO
+        const windowMaxAmount      = (new BigNumber(900)).times(decimalFactor).toFixed(); //900    * 100000000; // window max limit = 900 SDAO
+        const bonusAmount = (new BigNumber(1)).times(decimalFactor).toFixed(); //1 * 100000000;
 
         // acocunts[9] is a Token Operator
         // Open a new Stake
         await openStakeAndVerify(startPeriod, endSubmission, endPeriod, rewardAmount, maxStake, windowMaxAmount, accounts[9]);
 
         // Simulating the air drop stakes for accounts - 1,2,3,4,5
-        const stakeAmount_a1 =  35 * 100000000;
-        const stakeAmount_a2 =  50 * 100000000;
-        const stakeAmount_a3 =  90 * 100000000;
-        const stakeAmount_a4 =  110 * 100000000;
-        const stakeAmount_a5 =  80 * 100000000;
+        const stakeAmount_a1 =  (new BigNumber(35)).times(decimalFactor).toFixed(); //35 * 100000000;
+        const stakeAmount_a2 =  (new BigNumber(50)).times(decimalFactor).toFixed(); //50 * 100000000;
+        const stakeAmount_a3 =  (new BigNumber(90)).times(decimalFactor).toFixed(); //90 * 100000000;
+        const stakeAmount_a4 =  (new BigNumber(110)).times(decimalFactor).toFixed(); //110 * 100000000;
+        const stakeAmount_a5 =  (new BigNumber(80)).times(decimalFactor).toFixed(); //80 * 100000000;
 
-        const totalStakeAirDroped = 365 * 100000000;
+        const totalStakeAirDroped = (new BigNumber(365)).times(decimalFactor).toFixed(); //365 * 100000000;
 
         const stakersToAirDrop = [accounts[1], accounts[2], accounts[3], accounts[4], accounts[5]]
         const stakeAmountToAirDrop = [stakeAmount_a1, stakeAmount_a2, stakeAmount_a3, stakeAmount_a4, stakeAmount_a5 ]
@@ -626,9 +636,9 @@ console.log("Number of Accounts - ", accounts.length)
         const startPeriod = baseTime + 10;
         const endSubmission = startPeriod + 30;
         const endPeriod = endSubmission + 60;
-        const maxStake          = 210     * 100000000; // Max = 100 SDAO
-        const rewardAmount      = 30    * 100000000; // Reward = 30 SDAO
-        const windowMaxAmount      = 900    * 100000000; // window max limit = 900 SDAO
+        const maxStake          = (new BigNumber(210)).times(decimalFactor).toFixed(); //210     * 100000000; // Max = 100 SDAO
+        const rewardAmount      = (new BigNumber(30)).times(decimalFactor).toFixed(); //30    * 100000000; // Reward = 30 SDAO
+        const windowMaxAmount   = (new BigNumber(900)).times(decimalFactor).toFixed(); //900    * 100000000; // window max limit = 900 SDAO
         
 
         // Non Token Operator should allow to open for staking
@@ -648,17 +658,17 @@ console.log("Number of Accounts - ", accounts.length)
     it("4. Stake Operations - Submit Stake", async function() 
     {
 
-        const bonusAmount = 1 * 100000000;
+        const bonusAmount = (new BigNumber(1)).times(decimalFactor).toFixed(); //1 * 100000000;
 
         // Get the Current Staking Period Index - Should be the first one
         const currentStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
 
         const max = 100;
-        const stakeAmount_a1 =  getRandomNumber(max) * 100000000;
-        const stakeAmount_a2 =  getRandomNumber(max) * 100000000;
-        const stakeAmount_a3 =  getRandomNumber(max) * 100000000;
-        const stakeAmount_a4 =  getRandomNumber(max) * 100000000;
-        const stakeAmount_a5 =  getRandomNumber(max) * 100000000;
+        const stakeAmount_a1 =  (new BigNumber(getRandomNumber(max))).times(decimalFactor).toFixed(); //getRandomNumber(max) * 100000000;
+        const stakeAmount_a2 =  (new BigNumber(getRandomNumber(max))).times(decimalFactor).toFixed(); //getRandomNumber(max) * 100000000;
+        const stakeAmount_a3 =  (new BigNumber(getRandomNumber(max))).times(decimalFactor).toFixed(); //getRandomNumber(max) * 100000000;
+        const stakeAmount_a4 =  (new BigNumber(getRandomNumber(max))).times(decimalFactor).toFixed(); //getRandomNumber(max) * 100000000;
+        const stakeAmount_a5 =  (new BigNumber(getRandomNumber(max))).times(decimalFactor).toFixed(); //getRandomNumber(max) * 100000000;
 
         await sleep(await waitTimeInSlot("OPEN_FOR_SUBMISSION")); // Sleep to start the submissions
 
@@ -670,14 +680,17 @@ console.log("Number of Accounts - ", accounts.length)
         await submitStakeAndVerify(stakeAmount_a5, accounts[5]);
     
         // 2nd Submit Stake in the same period
-        await submitStakeAndVerify(10 * 100000000, accounts[3]);
+        const stakeAmount_a3_2 = (new BigNumber(10)).times(decimalFactor).toFixed();
+        await submitStakeAndVerify(stakeAmount_a3_2, accounts[3]);
 
         // Withdraw Stake
-        await withdrawStakeAndVerify(currentStakeMapIndex, 5 * 100000000, accounts[3]);
+        const stakeAmount_a3_3 = (new BigNumber(5)).times(decimalFactor).toFixed();
+        await withdrawStakeAndVerify(currentStakeMapIndex, stakeAmount_a3_3, accounts[3]);
 
         // Withdraw the Stake more than staked - Should Fail
         //await testErrorRevert(tokenStake.withdrawStake(currentStakeMapIndex, stakeAmount_a5 + 10000000, {from:accounts[5]}));
-        await testErrorRevert(tokenStake.withdrawStake(stakeAmount_a5 + 10000000, {from:accounts[5]}));
+        const stakeAmount_a5_2 = (new BigNumber(stakeAmount_a5)).plus(decimalFactor);
+        await testErrorRevert(tokenStake.withdrawStake(stakeAmount_a5_2, {from:accounts[5]}));
 
         // Withdraw Full Stake in Submission Phase
         await withdrawStakeAndVerify(currentStakeMapIndex, stakeAmount_a5, accounts[5]);
@@ -686,7 +699,8 @@ console.log("Number of Accounts - ", accounts.length)
         await submitStakeAndVerify(stakeAmount_a5, accounts[5]);
 
         // Submit more than the maxLimit allowed - Should Fail
-        await testErrorRevert(tokenStake.submitStake( stakeAmount_a5 + (3 * max * 100000000), {from:accounts[5]}));
+        const stakeAmount_a5_3 = (new BigNumber(stakeAmount_a5)).plus((new BigNumber(3 * max)).times(decimalFactor));
+        await testErrorRevert(tokenStake.submitStake( stakeAmount_a5_3, {from:accounts[5]}));
 
         await sleep(await waitTimeInSlot("OPEN_FOR_INCUBATION")); // Sleep to elapse the Submission time
 
@@ -722,7 +736,7 @@ console.log("Number of Accounts - ", accounts.length)
         const currentStakeMapIndex = (await tokenStake.currentStakeMapIndex.call()).toNumber();
 
         // Deposit Reward Amount for the stakers withdrawals to work
-        const rewardAmount = 30    * 100000000; // Reward = 30 SDAO
+        const rewardAmount = (new BigNumber(30)).times(decimalFactor).toFixed(); //30    * 100000000; // Reward = 30 SDAO
         // Deposit the tokens to pool
         await depositTokenAndVerify(rewardAmount , accounts[9]);
 
@@ -741,13 +755,14 @@ console.log("Number of Accounts - ", accounts.length)
     it("6. Stake Pool Operations - Deposit & Withdraw Token from pool by Token Operator", async function() 
     {
 
-        const contractTokenBalance = (await token.balanceOf(tokenStake.address)).toNumber();
+        const contractTokenBalance = new BigNumber(await token.balanceOf(tokenStake.address)).toFixed();
 
-        const withdrawAmount = (contractTokenBalance - 10000000);
-        const depositAmount = withdrawAmount + 1000000000;
+        const withdrawAmount =  (new BigNumber(contractTokenBalance)).minus(decimalFactor).toFixed(); //  (contractTokenBalance - 10000000);
+        const depositAmount = (new BigNumber(withdrawAmount)).plus(decimalFactor).toFixed(); //withdrawAmount + 1000000000;
 
         // Withdrawing more than available tokens from pool - Should Fail
-        await testErrorRevert(tokenStake.withdrawToken(contractTokenBalance + 10, {from:accounts[9]}));
+        const contractTokenBalance_higher = (new BigNumber(contractTokenBalance)).plus(decimalFactor).toFixed();
+        await testErrorRevert(tokenStake.withdrawToken(contractTokenBalance_higher, {from:accounts[9]}));
 
         // Withdraw the tokens from pool
         await withdrawTokenAndVerify(withdrawAmount, accounts[9]);
@@ -773,17 +788,17 @@ console.log("Number of Accounts - ", accounts.length)
         const endApproval = endSubmission + 20;
         const requestWithdrawStartPeriod = endApproval + 20 
         const endPeriod = requestWithdrawStartPeriod + 20;
-        const maxStake          = 210     * 100000000; // Max = 110 SDAO
-        const rewardAmount      = 120   * 100000000; // Reward = 120 SDAO
-        const windowMaxAmount      = 600    * 100000000; // window max limit = 500 SDAO
-        const bonusAmount = 1 * 100000000;
+        const maxStake          = (new BigNumber(210)).times(decimalFactor).toFixed(); //210     * 100000000; // Max = 110 SDAO
+        const rewardAmount      = (new BigNumber(120)).times(decimalFactor).toFixed(); //120   * 100000000; // Reward = 120 SDAO
+        const windowMaxAmount      = (new BigNumber(600)).times(decimalFactor).toFixed(); //600    * 100000000; // window max limit = 500 SDAO
+        const bonusAmount = (new BigNumber(1)).times(decimalFactor).toFixed(); //1 * 100000000;
         
         // acocunts[9] is a Token Operator
         await openStakeAndVerify(startPeriod, endSubmission, endPeriod, rewardAmount, maxStake, windowMaxAmount, accounts[9]);
 
         const max = 200;
-        const stakeAmount_a6 =  getRandomNumber(max) * 100000000;
-        const stakeAmount_a7 =  getRandomNumber(max) * 100000000;
+        const stakeAmount_a6 =  (new BigNumber(getRandomNumber(max))).times(decimalFactor).toFixed(); //getRandomNumber(max) * 100000000;
+        const stakeAmount_a7 =  (new BigNumber(getRandomNumber(max))).times(decimalFactor).toFixed(); //getRandomNumber(max) * 100000000;
 
         await sleep(await waitTimeInSlot("OPEN_FOR_SUBMISSION")); // Sleep to start the submissions
 
