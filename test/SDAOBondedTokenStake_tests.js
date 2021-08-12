@@ -572,7 +572,7 @@ console.log("Number of Accounts - ", accounts.length)
         const maxStake          = (new BigNumber(100)).times(decimalFactor).toFixed(); //100     * 100000000; // Max = 100 SDAO
         const rewardAmount      = (new BigNumber(30)).times(decimalFactor).toFixed(); //30    * 100000000; // Reward = 30 SDAO
         const windowMaxAmount      = (new BigNumber(900)).times(decimalFactor).toFixed(); //900    * 100000000; // window max limit = 900 SDAO
-        const bonusAmount = (new BigNumber(1)).times(decimalFactor).toFixed(); //1 * 100000000;
+        const bonusAmount = (new BigNumber(0)).times(decimalFactor).toFixed(); //1 * 100000000;
 
         // acocunts[9] is a Token Operator
         // Open a new Stake
