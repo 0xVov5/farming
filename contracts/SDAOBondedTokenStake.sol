@@ -3,8 +3,9 @@ pragma solidity ^0.6.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract SDAOBondedTokenStake is Ownable{
+contract SDAOBondedTokenStake is Ownable, ReentrancyGuard{
 
     using SafeMath for uint256;
 
@@ -117,7 +118,7 @@ contract SDAOBondedTokenStake is Ownable{
         maxAirDropStakeBlocks = _maxAirDropStakeBlocks.add(block.number); 
     }
 
-    function updateOperator(address newOperator) public onlyOwner {
+    function updateOperator(address newOperator) external onlyOwner {
 
         require(newOperator != address(0), "Invalid operator address");
         
@@ -126,7 +127,7 @@ contract SDAOBondedTokenStake is Ownable{
         emit NewOperator(newOperator);
     }
     
-    function withdrawToken(uint256 value) public onlyOperator
+    function withdrawToken(uint256 value) external onlyOperator
     {
 
         // Check if contract is having required balance 
@@ -138,12 +139,12 @@ contract SDAOBondedTokenStake is Ownable{
     }
 
     // To set the bonus token for future needs
-    function setBonusToken(address _bonusToken) public onlyOwner {
+    function setBonusToken(address _bonusToken) external onlyOwner {
         require(_bonusToken != address(0), "Invalid bonus token");
         bonusToken = ERC20(_bonusToken);
     }
 
-    function openForStake(uint256 _startPeriod, uint256 _submissionEndPeriod, uint256 _endPeriod, uint256 _windowRewardAmount, uint256 _maxStake, uint256 _windowMaxAmount) public onlyOperator {
+    function openForStake(uint256 _startPeriod, uint256 _submissionEndPeriod, uint256 _endPeriod, uint256 _windowRewardAmount, uint256 _maxStake, uint256 _windowMaxAmount) external onlyOperator {
 
         // Check Input Parameters
         require(_startPeriod >= now && _startPeriod < _submissionEndPeriod && _submissionEndPeriod < _endPeriod, "Invalid stake period");
@@ -206,7 +207,7 @@ contract SDAOBondedTokenStake is Ownable{
 
 
     // To submit a new stake for the current window
-    function submitStake(uint256 stakeAmount) public allowSubmission validStakeLimit(msg.sender, stakeAmount) {
+    function submitStake(uint256 stakeAmount) external allowSubmission validStakeLimit(msg.sender, stakeAmount) {
 
         // Transfer the Tokens to Contract
         require(token.transferFrom(msg.sender, address(this), stakeAmount), "Unable to transfer token to the contract");
@@ -225,7 +226,7 @@ contract SDAOBondedTokenStake is Ownable{
 
 
     // To withdraw stake during submission phase
-    function withdrawStake(uint256 stakeAmount) public allowClaimStake {
+    function withdrawStake(uint256 stakeAmount) external allowClaimStake nonReentrant{
 
         //require(
         //    (now >= stakeMap[stakeMapIndex].startPeriod && now <= stakeMap[stakeMapIndex].submissionEndPeriod),
@@ -262,7 +263,7 @@ contract SDAOBondedTokenStake is Ownable{
     }
 
     // To claim from the stake window
-    function claimStake() public allowClaimStake {
+    function claimStake() external allowClaimStake nonReentrant{
 
         StakeInfo storage stakeInfo = stakeHolderInfo[msg.sender];
 
@@ -401,12 +402,12 @@ contract SDAOBondedTokenStake is Ownable{
 
 
     // Getter Functions    
-    function getStakeHolders() public view returns(address[] memory) {
+    function getStakeHolders() external view returns(address[] memory) {
         return stakeHolders;
     }
 
     function getStakeInfo(address staker) 
-    public 
+    external 
     view
     returns (bool found, uint256 amount, uint256 rewardComputeIndex, uint256 bonusAmount) 
     {
