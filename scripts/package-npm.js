@@ -13,10 +13,16 @@ const mapDirs = {
 //                                or => key to extract from source file => dest file relative to module root
 const mapFiles = {
     "contracts/SDAOTokenStaking.sol":  "sol/SDAOTokenStaking.sol",
+    "contracts/SDAOBondedTokenStake.sol": "sol/SDAOBondedTokenStake.sol",
     "build/contracts/SDAOTokenStaking.json": {
         "abi": "abi/SDAOTokenStaking.json",
         "networks": "networks/SDAOTokenStaking.json",
         "bytecode": "bytecode/SDAOTokenStaking.json"
+    },
+    "build/contracts/SDAOBondedTokenStake.json": {
+        "abi": "abi/SDAOBondedTokenStake.json",
+        "networks": "networks/SDAOBondedTokenStake.json",
+        "bytecode": "bytecode/SDAOBondedTokenStake.json"
     },
     "resources/npm-README.md": "README.md",
     "LICENSE": "LICENSE"

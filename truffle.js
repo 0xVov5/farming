@@ -42,6 +42,13 @@ let truffleOptions = {
             network_id: "1" // mainnet network ID
        },
     },
+    //plugin to verify the contract
+    plugins: [
+    'truffle-plugin-verify'
+      ],
+    api_keys: {
+        etherscan: process.env.ETHERSCAN_API_KEY
+      },
     mocha: {
         reporter: 'eth-gas-reporter',
         reporterOptions : {

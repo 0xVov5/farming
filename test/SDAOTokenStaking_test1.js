@@ -368,7 +368,7 @@ contract('SDAOTokenStaking', ([alice, bob, carol, dev, minter]) => {
 
         });
 
-        it('Create the new epoc with the real production numbers - 2 ', async () => { 
+        it('Create the new epoc & extend with the real production numbers - 2 ', async () => { 
 
             // Stake Amount for Multiple Stakers
             let stakeAmountAliceBN = (new BigNumber(18570)).times(rewardsFactor);
@@ -428,7 +428,25 @@ contract('SDAOTokenStaking', ([alice, bob, carol, dev, minter]) => {
             const withdrawCarolLog = await this.sdaostaking.withdraw(poolId, stakeAmountCarolBN.toFixed(), carol, { from: carol });
 
             // Move to end of the epoc
-            await time.advanceBlockTo(endEpoCBlockNumber + 10);
+            await time.advanceBlockTo(endEpoCBlockNumber + 1);
+
+            // Extend the Current Pool by 20 more Blocks
+            const {tokenPerBlock: tokenPerBlock_b, lpSupply: lpSupply_b, accRewardsPerShare: accRewardsPerShare_b, lastRewardBlock: lastRewardBlock_b, endOfEpochBlock: endOfEpochBlock_b} = await this.sdaostaking.poolInfo.call(poolId);
+            let rewardPerBlock_2 = "215343022347242000";   // ~0.1953 Rewards per Block
+            const rewardPerBlockBN_2 = new BigNumber(rewardPerBlock_2)
+            await expectRevert(this.sdaostaking.extendPool(poolId, rewardPerBlockBN_2.toFixed(), endEpoCBlockNumber + 20, { from: carol }), "Ownable: caller is not the owner");
+            const extendPoolLog = await this.sdaostaking.extendPool(poolId, rewardPerBlockBN_2.toFixed(), endEpoCBlockNumber + 20, { from: minter });
+
+            const {tokenPerBlock: tokenPerBlock_a, lpSupply: lpSupply_a, accRewardsPerShare: accRewardsPerShare_a, lastRewardBlock: lastRewardBlock_a, endOfEpochBlock: endOfEpochBlock_a} = await this.sdaostaking.poolInfo.call(poolId);
+            assert.equal((new BigNumber(lpSupply_a)).toFixed(), (new BigNumber(lpSupply_b)).toFixed()); // There should be no change in the lpSupply
+            assert.equal(endOfEpochBlock_a.toNumber(), endEpoCBlockNumber + 20); // End of epoc block number shhould be updated
+            assert.equal((new BigNumber(tokenPerBlock_a)).toFixed(), rewardPerBlockBN_2.toFixed()); // Reward per block should be updated
+            assert.equal(extendPoolLog.receipt.blockNumber, lastRewardBlock_a); // Last reward block should be the block number of the extendpool Function call
+            
+
+
+            // Move to end of the epoc - 20 Blocks got extended
+            await time.advanceBlockTo(endEpoCBlockNumber + 20 + 10);
 
             // Carol Harvest
             await this.sdaostaking.harvest(poolId, carol, { from: carol });

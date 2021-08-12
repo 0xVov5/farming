@@ -6,7 +6,7 @@ import "./libraries/BoringMath.sol";
 import "./libraries/SignedSafeMath.sol";
 import "./libraries/BoringERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 /************************************************************************************************
 Originally from
 https://github.com/sushiswap/sushiswap/blob/master/contracts/MasterChefV2.sol
@@ -17,9 +17,8 @@ at commit hash 10148a31d9192bc803dac5d24fe0319b52ae99a4.
 *************************************************************************************************/
 
 
-contract SDAOTokenStaking is Ownable {
+contract SDAOTokenStaking is Ownable,ReentrancyGuard {
   using BoringMath for uint256;
-  using BoringMath128 for uint128;
   using BoringERC20 for IERC20;
   using SignedSafeMath for int256;
 
@@ -43,9 +42,9 @@ contract SDAOTokenStaking is Ownable {
   struct PoolInfo {
     uint256 tokenPerBlock;
     uint256 lpSupply;
-    uint128 accRewardsPerShare;
-    uint64 lastRewardBlock;
-    uint endOfEpochBlock;
+    uint256 accRewardsPerShare;
+    uint256 lastRewardBlock;
+    uint256 endOfEpochBlock;
   }
 
   //==========  Constants  ==========
@@ -70,9 +69,6 @@ contract SDAOTokenStaking is Ownable {
   /// @dev Info of each user that stakes tokens.
   mapping(uint256 => mapping(address => UserInfo)) public userInfo;
 
-  /// @dev Account allowed to allocate points.
-  address public pointsAllocator;
-
   /// @dev Total rewards received from governance for distribution.
   /// Used to return remaining rewards if staking is canceled.
   uint256 public totalRewardsReceived;
@@ -84,20 +80,9 @@ contract SDAOTokenStaking is Ownable {
   event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount, address indexed to);
   event Harvest(address indexed user, uint256 indexed pid, uint256 amount);
   event LogPoolAddition(uint256 indexed pid, IERC20 indexed lpToken);
-  event LogUpdatePool(uint256 indexed pid, uint64 lastRewardBlock, uint256 lpSupply, uint256 accRewardsPerShare);
+  event LogUpdatePool(uint256 indexed pid, uint256 lastRewardBlock, uint256 lpSupply, uint256 accRewardsPerShare);
   event RewardsAdded(uint256 amount);
-  event PointsAllocatorSet(address pointsAllocator);
-
-  // ==========  Modifiers  ========== 
-
-  /// @dev Ensure the caller is allowed to allocate points.
-  modifier onlyPointsAllocatorOrOwner {
-    require(
-      msg.sender == pointsAllocator || msg.sender == owner(),
-      "MultiTokenStaking: not authorized to allocate points"
-    );
-    _;
-  }
+  event ExtendPool(uint256 indexed pid, uint256 rewardBlock, uint256 endOfEpochBlock);
 
   // ==========  Constructor  ==========
 
@@ -106,21 +91,11 @@ contract SDAOTokenStaking is Ownable {
     rewardsToken = IERC20(_rewardsToken);
   }
 
-  // ==========  Governance  ========== 
-
-  /// @dev Set the address of the points allocator.
-  /// This account will have the ability to set allocation points for LP rewards.
-  function setPointsAllocator(address _pointsAllocator) external onlyOwner {
-    require(_pointsAllocator != address(0), "Invalid points allocator address.");
-    pointsAllocator = _pointsAllocator;
-    emit PointsAllocatorSet(_pointsAllocator);
-  }
-
   /// @dev Add rewards to be distributed.
   /// Note: This function must be used to add rewards if the owner
   /// wants to retain the option to cancel distribution and reclaim
   /// undistributed tokens.  
-  function addRewards(uint256 amount) external onlyPointsAllocatorOrOwner {
+  function addRewards(uint256 amount) external onlyOwner {
     
     require(rewardsToken.balanceOf(msg.sender) > 0, "ERC20: not enough tokens to transfer");
 
@@ -130,21 +105,19 @@ contract SDAOTokenStaking is Ownable {
     emit RewardsAdded(amount);
   }
 
-
-
   // ==========  Pools  ==========
   
   /// @dev Add a new LP to the pool.
   /// Can only be called by the owner or the points allocator.
   /// @param _lpToken Address of the LP ERC-20 token.
   /// @param _sdaoPerBlock Rewards per block.
-  /// @param _endofepochblock Epocs end block number.
-  function add(IERC20 _lpToken, uint256 _sdaoPerBlock, uint64 _endofepochblock) public onlyPointsAllocatorOrOwner {
+  /// @param _endOfEpochBlock Epocs end block number.
+  function add(IERC20 _lpToken, uint256 _sdaoPerBlock, uint256 _endOfEpochBlock) public onlyOwner {
 
     //This is not needed as we are going to use the contract for multiple pools with the same LP Tokens
     //require(!stakingPoolExists[address(_lpToken)], " Staking pool already exists.");
     
-    require(_endofepochblock > block.number, "Cannot create the pool for past time.");
+    require(_endOfEpochBlock > block.number, "Cannot create the pool for past time.");
 
     uint256 pid = poolInfo.length;
 
@@ -152,8 +125,8 @@ contract SDAOTokenStaking is Ownable {
 
     poolInfo.push(PoolInfo({
       tokenPerBlock: _sdaoPerBlock,
-      endOfEpochBlock:_endofepochblock,
-      lastRewardBlock: block.number.to64(),
+      endOfEpochBlock:_endOfEpochBlock,
+      lastRewardBlock: block.number,
       lpSupply:0,
       accRewardsPerShare: 0
     }));
@@ -163,6 +136,27 @@ contract SDAOTokenStaking is Ownable {
     emit LogPoolAddition(pid, _lpToken);
   }
 
+  /// @dev Add a new LP to the pool.
+  /// Can only be called by the owner or the points allocator.
+  /// @param _pid Pool Id to extend the schedule.
+  /// @param _sdaoPerBlock Rewards per block.
+  /// @param _endOfEpochBlock Epocs end block number.
+  function extendPool(uint256 _pid, uint256 _sdaoPerBlock, uint256 _endOfEpochBlock) public onlyOwner {
+    
+    require(_endOfEpochBlock > block.number && _endOfEpochBlock > poolInfo[_pid].endOfEpochBlock, "Cannot extend the pool for past time.");
+
+    // Update the accumulated rewards
+    PoolInfo memory pool = updatePool(_pid);
+
+    pool.tokenPerBlock = _sdaoPerBlock;
+    pool.endOfEpochBlock = _endOfEpochBlock;
+    pool.lastRewardBlock = block.number;
+
+    // Update the Pool Storage
+    poolInfo[_pid] = pool;
+
+    emit ExtendPool(_pid, _sdaoPerBlock, _endOfEpochBlock);
+  }
 
   /// @dev To get the rewards per block.
   function sdaoPerBlock(uint256 _pid) public view returns (uint256 amount) {
@@ -201,11 +195,11 @@ contract SDAOTokenStaking is Ownable {
           }
 
           uint256 sdaoReward = blocks.mul(sdaoPerBlock(_pid));
-          pool.accRewardsPerShare = pool.accRewardsPerShare.add((sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply).to128());
+          pool.accRewardsPerShare = pool.accRewardsPerShare.add((sdaoReward.mul(ACC_REWARDS_PRECISION) / lpSupply));
 
        }
 
-       pool.lastRewardBlock = block.number.to64();
+       pool.lastRewardBlock = block.number;
        poolInfo[_pid] = pool;
        emit LogUpdatePool(_pid, pool.lastRewardBlock, lpSupply, pool.accRewardsPerShare);
 
@@ -256,7 +250,7 @@ contract SDAOTokenStaking is Ownable {
   /// @param _pid The index of the pool. See `poolInfo`.
   /// @param _amount LP token amount to deposit.
   /// @param _to The receiver of `_amount` deposit benefit.
-  function deposit(uint256 _pid, uint256 _amount, address _to) public {
+  function deposit(uint256 _pid, uint256 _amount, address _to) external nonReentrant {
 
     // Input Validation
     require(_amount > 0 && _to != address(0), "Invalid inputs for deposit.");
@@ -285,7 +279,7 @@ contract SDAOTokenStaking is Ownable {
   /// @param _pid The index of the pool. See `poolInfo`.
   /// @param _amount LP token amount to withdraw.
   /// @param _to Receiver of the LP tokens.
-  function withdraw(uint256 _pid, uint256 _amount, address _to) public {
+  function withdraw(uint256 _pid, uint256 _amount, address _to) external nonReentrant {
 
     require(_to != address(0), "ERC20: transfer to the zero address");
 
@@ -314,7 +308,7 @@ contract SDAOTokenStaking is Ownable {
    /// @dev Harvest proceeds for transaction sender to `_to`.
    /// @param _pid The index of the pool. See `poolInfo`.
    /// @param _to Receiver of rewards.
-   function harvest(uint256 _pid, address _to) public {
+   function harvest(uint256 _pid, address _to) external nonReentrant {
     
     require(_to != address(0), "ERC20: transfer to the zero address");
 
@@ -339,7 +333,7 @@ contract SDAOTokenStaking is Ownable {
   /// @param _pid The index of the pool. See `poolInfo`.
   /// @param _amount LP token amount to withdraw.
   /// @param _to Receiver of the LP tokens and rewards.
-  function withdrawAndHarvest(uint256 _pid, uint256 _amount, address _to) public {
+  function withdrawAndHarvest(uint256 _pid, uint256 _amount, address _to) external nonReentrant {
 
     require(_to != address(0), "ERC20: transfer to the zero address");
 
@@ -375,7 +369,7 @@ contract SDAOTokenStaking is Ownable {
   /// @dev Withdraw without caring about rewards. EMERGENCY ONLY.
   /// @param _pid The index of the pool. See `poolInfo`.
   /// @param _to Receiver of the LP tokens.  
-  function emergencyWithdraw(uint256 _pid, address _to) public {
+  function emergencyWithdraw(uint256 _pid, address _to) external nonReentrant { 
 
     require(_to != address(0), "ERC20: transfer to the zero address");
 
@@ -395,6 +389,7 @@ contract SDAOTokenStaking is Ownable {
     emit EmergencyWithdraw(msg.sender, _pid, amount, _to);
   }
 
+
   function withdrawETHAndAnyTokens(address token) external onlyOwner {
     msg.sender.send(address(this).balance);
     IERC20 Token = IERC20(token);
@@ -407,6 +402,7 @@ contract SDAOTokenStaking is Ownable {
   function poolLength() external view returns (uint256) {
     return poolInfo.length;
   }
+
 
 
 }
