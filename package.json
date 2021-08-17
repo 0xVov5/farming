@@ -1,6 +1,6 @@
 {
-  "name": "singularitydao-farming-contracts",
-  "version": "1.0.2",
+  "name": "@singularitydao/v1-farming-contracts",
+  "version": "1.0.1",
   "private": true,
   "description": "Includes SingularityDAO farming contracts, migrations, tests",
   "directories": {
