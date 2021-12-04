@@ -207,7 +207,7 @@ contract SDAOBondedTokenStake is IExternalStake, Ownable, ReentrancyGuard{
     }
 
 
-    // To submit a new stake for the current window
+    // To submit a new stake for the current window - This function left as is for backward compatability with existing DApps
     function submitStake(uint256 stakeAmount) external allowSubmission validStakeLimit(msg.sender, stakeAmount) {
 
         // Transfer the Tokens to Contract
