@@ -4,8 +4,9 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "./IExternalStake.sol";
 
-contract SDAOBondedTokenStake is Ownable, ReentrancyGuard{
+contract SDAOBondedTokenStake is IExternalStake, Ownable, ReentrancyGuard{
 
     using SafeMath for uint256;
 
@@ -206,7 +207,7 @@ contract SDAOBondedTokenStake is Ownable, ReentrancyGuard{
     }
 
 
-    // To submit a new stake for the current window
+    // To submit a new stake for the current window - This function left as is for backward compatability with existing DApps
     function submitStake(uint256 stakeAmount) external allowSubmission validStakeLimit(msg.sender, stakeAmount) {
 
         // Transfer the Tokens to Contract
@@ -223,6 +224,28 @@ contract SDAOBondedTokenStake is Ownable, ReentrancyGuard{
         emit SubmitStake(currentStakeMapIndex, msg.sender, stakeAmount);
 
     }
+
+    // To Submit a new stakeFor in the current window - Can be called from the other contracts like airdrop 
+    function submitStakeFor(address staker, uint256 stakeAmount) external virtual override allowSubmission validStakeLimit(staker, stakeAmount) nonReentrant returns(bool) {
+
+        // Check for the stakerFor Address
+        require(staker != address(0), "Invalid staker");
+
+        // Transfer the Tokens to Contract
+        require(token.transferFrom(msg.sender, address(this), stakeAmount), "Unable to transfer token to the contract");
+
+        _createStake(staker, stakeAmount);
+
+        // Update the User balance
+        balances[staker] = balances[staker].add(stakeAmount);
+
+        // Update current stake period total stake - For Auto Approvals
+        windowTotalStake = windowTotalStake.add(stakeAmount); 
+       
+        emit SubmitStake(currentStakeMapIndex, staker, stakeAmount);
+
+    }
+
 
 
     // To withdraw stake during submission phase
