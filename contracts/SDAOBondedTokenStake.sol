@@ -244,6 +244,7 @@ contract SDAOBondedTokenStake is IExternalStake, Ownable, ReentrancyGuard{
        
         emit SubmitStake(currentStakeMapIndex, staker, stakeAmount);
 
+        return true;
     }
 
 
