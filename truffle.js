@@ -41,6 +41,20 @@ let truffleOptions = {
             provider: () => provider("https://mainnet.infura.io/v3/ea7f98d8d8ec45029085322fea33b752"),
             network_id: "1" // mainnet network ID
        },
+       bsctestnet: {
+        provider: () => provider( `https://data-seed-prebsc-1-s1.binance.org:8545`),
+        network_id: 97,
+        confirmations: 10,
+        timeoutBlocks: 1000,
+        skipDryRun: true
+      },
+      bscmainnet: {
+        provider: () => provider( `https://bsc-dataseed1.binance.org`),
+        network_id: 56,
+        confirmations: 10,
+        timeoutBlocks: 200,
+        skipDryRun: true
+      },
     },
     //plugin to verify the contract
     plugins: [
